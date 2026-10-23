@@ -11,28 +11,70 @@ the camera and every physics value.
 It needs the owner's own game installs and a `testbed.toml` that points at them. CI builds and lints it; it has no
 game data and does not run it.
 
+## Try first (no window)
+
+You need Rust (the stable toolchain from [rustup.rs](https://rustup.rs)), `git`, and at least one of the games installed
+(see [Config](#config) for where each keeps its files). **The first build takes about 6 minutes** on an M-series Mac
+(Bevy and four game readers are compiled with optimisations) and a Bevy target folder is about 3 GB; later builds take
+seconds. Start it on its own, then try the commands that open no window:
+
+```sh
+cp testbed.example.toml testbed.toml            # then set your game paths (untracked); see Config
+cargo build --release                           # the ~6 minutes
+cargo run --release -- list --provider hytale --filter Trork --limit 10   # ids a game offers (put them in the config)
+cargo run --release -- inspect                  # the numbers of every item as text, no rendering
+cargo run --release -- shots --out shots/a      # one 512 x 512 PNG per item + manifest.json; no window
+```
+
+`inspect` and `list` need no graphics at all; `shots` renders offscreen (it needs a GPU, not a screen). Only when those
+look right, open the gallery.
+
 ## Run
 
 ```sh
-cp testbed.example.toml testbed.toml            # then set your game paths (untracked)
 cargo run --release                             # the gallery (bridge-testbed --config testbed.toml)
-cargo run --release -- list --provider hytale --filter Trork     # find ids for the config
+cargo run --release -- list --provider hytale --filter Trork --limit 10   # find ids for the config
 cargo run --release -- inspect                  # the numbers of every item as text, no rendering
 cargo run --release -- shots --out shots/a      # 512 x 512 shots + manifest.json
 cargo run --release -- compare --base shots/a --new shots/b
 ```
 
+`list` prints at most `--limit` ids (default 40; the heading says how many matched) and, when there are more, how many
+it left out. Narrow it with `--filter`, which matches the id or the name.
+
+When the output is not a terminal (a file, a pipe, CI), the logs have no ANSI colour codes; `NO_COLOR=1` turns them off in
+a terminal too.
+
 ## Config
 
 `testbed.toml` (see [`testbed.example.toml`](testbed.example.toml) for every key):
 
-- `[providers.wt|wf|hytale|nocturne]`: the game's install (`path`: War Thunder's `game` folder, Warframe's `Cache.Windows`, Hytale's `Assets.zip`, the folder of Nocturne that holds `smt3hd_Data`). A provider is opened when its first item loads. One that fails
-  to open puts its error at the slots of its items; nothing crashes. `wf` has `max_texture` to keep a scene small.
+- `[providers.wt|wf|hytale|nocturne]`: the game's install, as `path`. A provider is opened when its first item loads. One
+  that fails to open puts its error at the slots of its items; nothing crashes. `wf` has `max_texture` to keep a scene small.
+
+  | provider | `path` | where it is |
+  |---|---|---|
+  | `wt` | War Thunder's `game` folder | macOS: `/Applications/WarThunderLauncher.app/Contents/WarThunder.app/Contents/Resources/game`. Elsewhere: the `game` folder of the install, the one that holds `aces.vromfs.bin` |
+  | `wf` | Warframe's `Cache.Windows` folder | the one that holds the `.toc` and `.cache` pairs (`H.Texture.toc`, ...); Warframe's Windows files, copied to your Mac if you play there (see [wf-unpack](https://github.com/patodois/wf-unpack)) |
+  | `hytale` | Hytale's `Assets.zip` | **optional**: leave `path` out to use the launcher's install on macOS (`~/Library/Application Support/Hytale/install/release/package/game/latest/Assets.zip`); set it for any other location |
+  | `nocturne` | the game folder that holds `smt3hd_Data` | wherever you installed it; [nocturne-unpack](https://github.com/patodois/nocturne-unpack) says how to get the Windows build onto a Mac or Linux machine |
+
+  A leading `~` or `~/` in a `path` is your home folder (`$HOME`, on Windows `%USERPROFILE%`), so `path = "~/Games/smt3hd"`
+  works; `~other` is not expanded. Other relative paths are relative to where you run the program.
 - `[[items]]`: `provider`, `id`, `kind = "model" | "animated" | "scene"`, `label` (also the shot's file name), and
   optionally `dynamic = true` (a rigid body), `collide = true` (a static trimesh), `collision_id` (a scene's own
   collision), `at = [x, z]` (a fixed place).
 - `[gallery]`: `columns`, `gap`, `snap_to_ground`, `scene_lights`. `[physics]`: `density`, `drop_height`, `gravity`.
   `[stack]`: the block the B key stacks.
+
+**One game only.** Keep its `[providers.<name>]` section and its `[[items]]`, and delete the other games' sections and
+items (and `[stack]`, which names a Hytale block, if you removed Hytale: the B key then does nothing). A provider with no
+section is not opened: if an item still names it, that item shows `provider "wt" has no [providers.wt] section in the
+config` at its slot, `inspect` prints it as an `ERROR` line and `shots` writes no PNG for it, counts it as failed and
+says so in `manifest.json`; the other items are unaffected. A provider with a section whose install is not there says
+`<name> failed to open: <reason>` in the same places. To build only one reader (a shorter build), use
+`cargo run --release --no-default-features --features hytale`; an item or section that names a reader left out then reports
+that this build has no such provider.
 
 Ids are the providers' own. Warframe's animated ids carry a clip filter (`<model>?animations=<filter>`, `|` separates
 several) and its level collision is the level path plus `?collision`; Nocturne's are the bundle name (`dvl0x01`) for a

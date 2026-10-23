@@ -2,24 +2,29 @@
 #
 #   bridge-testbed                              # the gallery
 #   bridge-testbed shots --out shots/a          # fixed 512 x 512 shots of every item
-#   bridge-testbed list --provider hytale --filter Trork    # find ids for the items below
+#   bridge-testbed list --provider hytale --filter Trork --limit 10   # find ids for the items below
 
-# Provider names are fixed: wt, wf, hytale, nocturne.
+# Provider names are fixed: wt, wf, hytale, nocturne. A leading ~ in a path is your home folder.
+# For one game only, keep its section and its [[items]] and delete the rest (see README.md).
 [providers.wt]
+# War Thunder's game folder. On macOS:
+# /Applications/WarThunderLauncher.app/Contents/WarThunder.app/Contents/Resources/game
 path = "/path/to/WarThunder/game"
 
 [providers.wf]
-path = "/path/to/Warframe/Cache.Windows"
+path = "~/Games/Warframe/Cache.Windows"
 # Largest side of a baked texture. Keeps a Warframe scene's memory down; leave out for full size.
 max_texture = 512
 
 [providers.hytale]
-# Assets.zip; leave out to use the launcher's install
-path = "/path/to/Hytale/install/release/package/game/latest/Assets.zip"
+# Assets.zip. Optional: without `path`, the launcher's install on macOS is used,
+# ~/Library/Application Support/Hytale/install/release/package/game/latest/Assets.zip
+# Set it for any other location:
+# path = "/path/to/Hytale/install/release/package/game/latest/Assets.zip"
 
 [providers.nocturne]
 # The game folder that holds smt3hd_Data
-path = "/path/to/smt3hd"
+path = "~/Games/smt3hd"
 
 [gallery]
 columns = 4          # items per row; 0 = one row

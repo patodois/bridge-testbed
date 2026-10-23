@@ -100,14 +100,29 @@ enum Command {
     List {
         #[arg(long)]
         provider: String,
+        /// Only ids or names that contain this text
         #[arg(long, default_value = "")]
         filter: String,
+        /// How many of the matches to print (all of them are counted)
         #[arg(long, default_value_t = 40)]
         limit: usize,
     },
 }
 
+/// Bevy's logger writes ANSI colour codes unless `NO_COLOR` is set, also into a file or a pipe. Set it
+/// when the output is not a terminal (`inspect > out.txt`, `shots 2>&1 | tee log`, CI logs).
+fn no_colour_unless_terminal() {
+    use std::io::IsTerminal;
+    if std::env::var_os("NO_COLOR").is_none()
+        && !(std::io::stdout().is_terminal() && std::io::stderr().is_terminal())
+    {
+        // nothing else is running yet, so changing the environment is safe
+        std::env::set_var("NO_COLOR", "1");
+    }
+}
+
 fn main() -> Result<()> {
+    no_colour_unless_terminal();
     let cli = Cli::parse();
     match cli.command {
         Some(Command::Compare {
@@ -145,6 +160,12 @@ fn main() -> Result<()> {
             println!("{} assets ({} shown)", all.len(), all.len().min(limit));
             for a in all.iter().take(limit) {
                 println!("{:?}\t{}\t{}", a.kind, a.id, a.name);
+            }
+            if all.len() > limit {
+                println!(
+                    "... {} more: narrow with --filter, or raise --limit",
+                    all.len() - limit
+                );
             }
             Ok(())
         }
