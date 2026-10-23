@@ -1,0 +1,85 @@
+[package]
+name = "bridge-testbed"
+version = "0.1.0"
+edition = "2021"
+description = "Loads assets from every rewrite-bridge provider side by side, to check scale, orientation, animation, materials and physics across games"
+license = "MIT OR Apache-2.0"
+# Local tool: it needs the owner's own game installs to do anything
+publish = false
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+png = "0.18"
+avian3d = { version = "0.8", default-features = false, features = ["3d", "parry-f32", "parallel"] }
+rewrite-bridge = { git = "https://github.com/patodois/rewrite-bridge", rev = "4340109034667921f719f7ae1cff36c817604f9b" }
+rewrite-bridge-bevy = { git = "https://github.com/patodois/rewrite-bridge", rev = "4340109034667921f719f7ae1cff36c817604f9b" }
+
+# The providers. Each pins rewrite-bridge at 1b58201, which differs from the revision of
+# rewrite-bridge-bevy above; .cargo/config.toml patches both onto one copy (see README.md).
+# wf-unpack: the code uses the animated and collision ids of its bridge2 branch (e759a20, not pushed yet).
+# main is pinned so the dependency resolves; the local patch supplies the branch.
+wt-unpack = { git = "https://github.com/patodois/wt-unpack", rev = "89188d3671c1d496a63b205cf2400349ccbb6fca", features = ["bridge"], optional = true }
+wf-unpack = { git = "https://github.com/patodois/wf-unpack", rev = "1fc757ac0f668ad78309ba5977dbb8ca69074df4", features = ["bridge"], optional = true }
+hytale-unpack = { git = "https://github.com/patodois/hytale-unpack", rev = "310a002121302c40773a1244cab72e4a499bd37f", optional = true }
+libc = "0.2"
+
+[dependencies.bevy]
+version = "0.20"
+default-features = false
+features = [
+    "std",
+    "async_executor",
+    "multi_threaded",
+    "bevy_asset",
+    "bevy_log",
+    "bevy_color",
+    "bevy_image",
+    "bevy_mesh",
+    "bevy_mikktspace",
+    "bevy_animation",
+    "bevy_curve",
+    "bevy_camera",
+    "bevy_light",
+    "bevy_render",
+    "bevy_pbr",
+    "bevy_core_pipeline",
+    "bevy_post_process",
+    "bevy_anti_alias",
+    "bevy_gizmos",
+    "bevy_gizmos_render",
+    "bevy_shader",
+    "bevy_material",
+    "bevy_window",
+    "bevy_winit",
+    "bevy_text",
+    "bevy_ui",
+    "bevy_ui_render",
+    "default_font",
+    "hdr",
+    "png",
+    "tonemapping_luts",
+    "zstd_rust",
+    "x11",
+    "wayland",
+]
+
+[features]
+default = ["wt", "wf", "hytale"]
+wt = ["dep:wt-unpack"]
+wf = ["dep:wf-unpack"]
+hytale = ["dep:hytale-unpack"]
+# A slot only: nocturne-unpack is still being written. See README.md for how to wire it.
+nocturne = []
+
+# Bevy and the game readers are far too slow without optimisations; keep our own code debuggable
+[profile.dev.package."*"]
+opt-level = 3
+# Dependency debug info is large (Bevy) and rarely needed
+debug = false
+
+[profile.dev]
+debug = "line-tables-only"

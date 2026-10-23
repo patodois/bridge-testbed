@@ -1,0 +1,73 @@
+# Copy to testbed.toml (untracked: it holds local paths) and point it at your game installs.
+#
+#   bridge-testbed                              # the gallery
+#   bridge-testbed shots --out shots/a          # fixed 512 x 512 shots of every item
+#   bridge-testbed list --provider hytale --filter Trork    # find ids for the items below
+
+# Provider names are fixed: wt, wf, hytale (and nocturne, a slot that is not wired yet).
+[providers.wt]
+path = "/path/to/WarThunder/game"
+
+[providers.wf]
+path = "/path/to/Warframe/Cache.Windows"
+# Largest side of a baked texture. Keeps a Warframe scene's memory down; leave out for full size.
+max_texture = 512
+
+[providers.hytale]
+# Assets.zip; leave out to use the launcher's install
+path = "/path/to/Hytale/install/release/package/game/latest/Assets.zip"
+
+[gallery]
+columns = 0          # items per row; 0 = one row
+gap = 1.5            # metres between neighbouring AABBs
+snap_to_ground = false
+
+# Every value in [physics] is a testbed assumption: the bridge carries no physics data yet.
+[physics]
+density = 1.0        # kg per m3 of hull volume
+drop_height = 3.0    # metres from the ground to the lowest point of a dropped prop
+gravity = 9.81       # m/s2
+
+# The block the B key stacks as a 3 + 2 + 1 pyramid
+[stack]
+provider = "hytale"
+id = "Server/Item/Items/Rock/Aqua/Rock_Aqua.json"
+count = 6
+
+# kind: "model" = Provider::load, "animated" = load_animated (clips), "scene" = load_scene
+# dynamic = true: a convex-hull rigid body, dropped with Space
+# collide = true: a static trimesh of the render meshes (scenes always get one)
+# collision_id: a scene's own collision, where the provider has some (wf: the level with ?collision)
+[[items]]
+provider = "wt"
+id = "tanks/usa_m4a1_76w_sherman.grp:m4a1_76w_sherman"
+kind = "model"
+label = "Sherman"
+collide = true
+
+# wf ids can ask for clips: "<model>?animations=<filter>", filters separated by | (substring or glob)
+[[items]]
+provider = "wf"
+id = "/Lotus/Characters/Tenno/Excalibur/Excalibur_skel.fbx?animations=/Lotus/Animations/Tenno/Movement/MeleeWeapon/Sword/Jog*|/Lotus/Animations/Tenno/Movement/MeleeWeapon/Sword/Sprint*"
+kind = "animated"
+label = "Excalibur"
+
+[[items]]
+provider = "hytale"
+id = "Server/Models/Intelligent/Trork/Trork.json"
+kind = "animated"
+label = "Trork"
+dynamic = true
+
+[[items]]
+provider = "hytale"
+id = "Server/Item/Items/Rock/Aqua/Rock_Aqua.json"
+kind = "model"
+label = "Block"
+dynamic = true
+
+[[items]]
+provider = "hytale"
+id = "Server/Prefabs/Npc/Kweebec/Oak/Garden_Small/Kweebec_Oak_Garden_Small_003.prefab.json"
+kind = "scene"
+label = "Prefab"
