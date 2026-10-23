@@ -4,7 +4,7 @@
 #   bridge-testbed shots --out shots/a          # fixed 512 x 512 shots of every item
 #   bridge-testbed list --provider hytale --filter Trork    # find ids for the items below
 
-# Provider names are fixed: wt, wf, hytale (and nocturne, a slot that is not wired yet).
+# Provider names are fixed: wt, wf, hytale, nocturne.
 [providers.wt]
 path = "/path/to/WarThunder/game"
 
@@ -17,8 +17,12 @@ max_texture = 512
 # Assets.zip; leave out to use the launcher's install
 path = "/path/to/Hytale/install/release/package/game/latest/Assets.zip"
 
+[providers.nocturne]
+# The game folder that holds smt3hd_Data
+path = "/path/to/smt3hd"
+
 [gallery]
-columns = 0          # items per row; 0 = one row
+columns = 4          # items per row; 0 = one row
 gap = 1.5            # metres between neighbouring AABBs
 snap_to_ground = false
 
@@ -71,3 +75,18 @@ provider = "hytale"
 id = "Server/Prefabs/Npc/Kweebec/Oak/Garden_Small/Kweebec_Oak_Garden_Small_003.prefab.json"
 kind = "scene"
 label = "Prefab"
+
+# Nocturne: a demon with every clip of its animator, and one field prefab as a scene.
+# Nocturne has no collision data in the bridge, so the field's static collider is a trimesh of its
+# render meshes (a testbed assumption).
+[[items]]
+provider = "nocturne"
+id = "dvl0x01"
+kind = "animated"
+label = "Demon"
+
+[[items]]
+provider = "nocturne"
+id = "f014/f014_012"
+kind = "scene"
+label = "Field"

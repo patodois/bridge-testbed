@@ -15,7 +15,6 @@ game data and does not run it.
 
 ```sh
 cp testbed.example.toml testbed.toml            # then set your game paths (untracked)
-cp .cargo/config.toml.example .cargo/config.toml  # then set the absolute paths (untracked), see "One rewrite-bridge"
 cargo run --release                             # the gallery (bridge-testbed --config testbed.toml)
 cargo run --release -- list --provider hytale --filter Trork     # find ids for the config
 cargo run --release -- inspect                  # the numbers of every item as text, no rendering
@@ -27,7 +26,7 @@ cargo run --release -- compare --base shots/a --new shots/b
 
 `testbed.toml` (see [`testbed.example.toml`](testbed.example.toml) for every key):
 
-- `[providers.wt|wf|hytale]`: the game's install (`path`). A provider is opened when its first item loads. One that fails
+- `[providers.wt|wf|hytale|nocturne]`: the game's install (`path`: War Thunder's `game` folder, Warframe's `Cache.Windows`, Hytale's `Assets.zip`, the folder of Nocturne that holds `smt3hd_Data`). A provider is opened when its first item loads. One that fails
   to open puts its error at the slots of its items; nothing crashes. `wf` has `max_texture` to keep a scene small.
 - `[[items]]`: `provider`, `id`, `kind = "model" | "animated" | "scene"`, `label` (also the shot's file name), and
   optionally `dynamic = true` (a rigid body), `collide = true` (a static trimesh), `collision_id` (a scene's own
@@ -36,7 +35,8 @@ cargo run --release -- compare --base shots/a --new shots/b
   `[stack]`: the block the B key stacks.
 
 Ids are the providers' own. Warframe's animated ids carry a clip filter (`<model>?animations=<filter>`, `|` separates
-several) and its level collision is the level path plus `?collision`; see wf-unpack's README.
+several) and its level collision is the level path plus `?collision`; Nocturne's are the bundle name (`dvl0x01`) for a
+demon and `bundle/prefab` (`f014/f014_012`) for a field prefab; see the providers' READMEs.
 
 ## The gallery
 
@@ -81,9 +81,15 @@ here is a testbed assumption**; the panel says so on screen.
 
 - Gravity 9.81 m/s² (assumption). Friction and restitution are Avian's defaults (assumption). The ground collider is a
   testbed plane at y = 0.
-- Scenes get a **static trimesh**: of the provider's own collision shapes when the item has a `collision_id` (real game
-  collision, and the panel says "provider's own collision shapes"), otherwise of the render meshes (an assumption).
-  Models get one with `collide = true`.
+- **Static colliders use the game's own collision wherever the provider has it, and say so in the panel:**
+  - Warframe: a scene item with `collision_id = "<level>?collision"` collides with the PhysX shapes of the level.
+  - War Thunder: a level scene collides with its terrain model (the landmesh's collision mesh) and, at every placement,
+    the object's own collision resource (`load_level_collision`: triangle meshes, convex hulls and boxes as one static
+    trimesh, tree trunks as capsule colliders). A `collide = true` model item tries `load_object_collision` for its
+    model name (or `collision_id`); vehicles have none, and the panel says so.
+  - Everything else (Hytale, Nocturne, and a model or scene the provider has no collision for) gets a **static trimesh of
+    the render meshes**, which is a testbed assumption and is labelled "not game collision". **Nocturne has no collision
+    data in the bridge**; its panel says so.
 - Items with `dynamic = true` are **convex-hull rigid bodies** of the model at rest (assumption). Mass is **1 kg per m³
   of hull volume** by default (assumption, `[physics] density`). They wait, switched off, at their slot until dropped.
 - **Space** drops the selected prop with its lowest point 3 m above the ground (`drop_height`). **B** spawns a pyramid
@@ -121,36 +127,32 @@ The commands are listed in `src/capture.rs`.
 
 | name | crate | notes |
 |---|---|---|
-| `wt` | [wt-unpack](https://github.com/patodois/wt-unpack) | vehicles; `load_scene` for levels (a whole map is heavy, about 1.2 GB for Berlin, so none is in the default config) |
-| `wf` | [wf-unpack](https://github.com/patodois/wf-unpack) | models, animated ids, level scenes and `?collision` scenes (branch `bridge2`) |
-| `hytale` | [hytale-unpack](https://github.com/patodois/hytale-unpack) | entity models with clips, blocks, prefabs |
-| `nocturne` | nocturne-unpack | **a slot only**; the crate is still being written |
+| `wt` | [wt-unpack](https://github.com/patodois/wt-unpack) `749d1ac` | vehicles; `load_scene` for levels (a whole map is heavy, about 1.2 GB for Berlin, so none is in the default config); the game's collision of objects and levels |
+| `wf` | [wf-unpack](https://github.com/patodois/wf-unpack) `d5c33e7` | models, animated ids, level scenes and `?collision` scenes |
+| `hytale` | [hytale-unpack](https://github.com/patodois/hytale-unpack) `9bbf06622` | entity models with clips, blocks, prefabs |
+| `nocturne` | [nocturne-unpack](https://github.com/patodois/nocturne-unpack) `826b963` | demons with the clips of their animator, field prefabs as scenes; no collision data |
 
-Each is behind a cargo feature (`wt`, `wf`, `hytale`, all on by default). To wire nocturne: add `nocturne-unpack` with
-its `bridge` feature to `Cargo.toml` as an optional dependency, make the `nocturne` feature enable it, and construct its
-`Provider` in the `"nocturne"` arm of `open` in `src/providers.rs`. A `[providers.nocturne]` section and items with
-`provider = "nocturne"` then work like the others.
+Each is behind a cargo feature (`wt`, `wf`, `hytale`, `nocturne`, all on by default). A provider that is not configured,
+or whose game is not installed, shows an error label at its items' slots and nothing else.
 
-### One rewrite-bridge
+### Dependencies
 
-The providers pin rewrite-bridge at `1b58201`, while `rewrite-bridge-bevy` lives at `4340109`. Cargo would build two
-incompatible copies of the crate (`Model` from one would not be `Model` of the other). The library source of the two
-revisions is identical, so `.cargo/config.toml` (untracked, absolute paths; template in
-[`.cargo/config.toml.example`](.cargo/config.toml.example)) patches `rewrite-bridge` and `rewrite-bridge-bevy` onto one
-checkout at `4340109`. `Cargo.lock` then holds exactly one `rewrite-bridge` (`grep -c 'name = "rewrite-bridge"' Cargo.lock`
-prints 1). Delete the patch once the providers pin a revision that has `rewrite-bridge-bevy`. CI clones the checkout and
-writes the same config.
+Every dependency is a public crate or a public git revision; there is nothing to patch locally. `rewrite-bridge` and
+`rewrite-bridge-bevy` are pinned at `0c5d0b0` and all four providers pin `rewrite-bridge` at that same revision, so
+`Cargo.lock` holds exactly one copy (`grep -c 'name = "rewrite-bridge"' Cargo.lock` prints 1). Move all pins together.
 
-The testbed uses the animated ids and scenes of wf-unpack's `bridge2` branch, which is not on GitHub yet: `Cargo.toml`
-pins wf-unpack's `main` so that the dependency resolves and the config patches in the local branch. CI therefore builds
-without the `wf` feature until the branch is pushed; then pin its commit and drop the patch.
+nocturne-unpack reads Unity 2019.4 bundles with a patched copy of rabex 0.2.1 that lives in its `vendor/rabex` and is wired
+in by a `[patch.crates-io]` that Cargo only applies in its own workspace. `Cargo.toml` here repeats it, pointing at the same
+public revision of nocturne-unpack (Cargo finds the `rabex` package inside that repository). Drop it when upstream rabex
+opens these bundles.
 
 ## Memory and disk
 
 Items load one at a time and models are moved into Bevy's assets, which drop their CPU copies after upload. With the
-example config (a Sherman, Excalibur with six clips, the Trork with 204, a Hytale block and a small prefab) the gallery
-peaks at about 1.4 GB resident (2.6 GB footprint, which counts Metal's allocations). A Bevy target directory is about
-2.5 GB for `cargo build` and as much again for `cargo clippy`.
+example config (a Sherman, Excalibur with six clips, the Trork with 204, a Hytale block and a small prefab, a Nocturne
+demon with five clips and a field prefab) the gallery peaks at about 1.65 GB resident (2.35 GB footprint, which counts
+Metal's allocations); `shots` peaks at 1.4 GB. A War Thunder level with its collision (`arcade_norway_plain`) adds about
+0.5 GB resident. A Bevy target directory is about 3 GB for `cargo build` and as much again for `cargo clippy`.
 
 ## Tests
 

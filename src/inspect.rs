@@ -74,8 +74,50 @@ pub fn run(config: &Config, only: Option<&str>, max_clips: usize) -> Result<()> 
             s.mean_albedo, s.mean_metallic, s.mean_roughness, s.max_emissive, s.flipped_triangles,
             s.normal_checked_triangles, s.double_sided_materials, s.blended_materials
         );
+        if let Some(c) = &loaded.collision.trimesh {
+            let source = match c.source {
+                crate::analyze::CollisionSource::ProviderCollision => "the game's own collision",
+                crate::analyze::CollisionSource::RenderMeshes => {
+                    "render meshes (testbed assumption)"
+                }
+            };
+            println!(
+                "   static collider: {source}: {} triangles, {} capsules {}",
+                c.triangles.len(),
+                c.capsules.len(),
+                c.detail
+            );
+        }
+        if let Some(n) = &loaded.collision.note {
+            println!("   collision note: {n}");
+        }
         for w in &loaded.warnings {
             println!("   ! {w}");
+        }
+        if let Payload::Scene(scene) = &loaded.payload {
+            for m in &scene.models {
+                if let rb::SceneModel::Inline(m) = m {
+                    if let Some(b) = crate::analyze::model_bounds(m) {
+                        let s = b.size();
+                        if s.max_element() > crate::analyze::MAX_PLACEMENT_M {
+                            let far = m
+                                .meshes
+                                .iter()
+                                .flat_map(|x| &x.positions)
+                                .filter(|p| {
+                                    p.iter().any(|c| c.abs() > crate::analyze::MAX_PLACEMENT_M)
+                                })
+                                .count();
+                            println!(
+                                "   model {:?} is {:.3e} m wide: {far} of its vertices are beyond {} km",
+                                m.name,
+                                s.max_element(),
+                                crate::analyze::MAX_PLACEMENT_M / 1000.0
+                            );
+                        }
+                    }
+                }
+            }
         }
         if let (ItemKind::Animated, Payload::Model(am)) = (item.kind, &loaded.payload) {
             println!(

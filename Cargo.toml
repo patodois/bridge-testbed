@@ -15,17 +15,22 @@ serde_json = "1"
 toml = "0.8"
 png = "0.18"
 avian3d = { version = "0.8", default-features = false, features = ["3d", "parry-f32", "parallel"] }
-rewrite-bridge = { git = "https://github.com/patodois/rewrite-bridge", rev = "4340109034667921f719f7ae1cff36c817604f9b" }
-rewrite-bridge-bevy = { git = "https://github.com/patodois/rewrite-bridge", rev = "4340109034667921f719f7ae1cff36c817604f9b" }
+rewrite-bridge = { git = "https://github.com/patodois/rewrite-bridge", rev = "0c5d0b0e08fcff58166f2ed6ad3daf9bdc72c0a8" }
+rewrite-bridge-bevy = { git = "https://github.com/patodois/rewrite-bridge", rev = "0c5d0b0e08fcff58166f2ed6ad3daf9bdc72c0a8" }
 
-# The providers. Each pins rewrite-bridge at 1b58201, which differs from the revision of
-# rewrite-bridge-bevy above; .cargo/config.toml patches both onto one copy (see README.md).
-# wf-unpack: the code uses the animated and collision ids of its bridge2 branch (e759a20, not pushed yet).
-# main is pinned so the dependency resolves; the local patch supplies the branch.
-wt-unpack = { git = "https://github.com/patodois/wt-unpack", rev = "89188d3671c1d496a63b205cf2400349ccbb6fca", features = ["bridge"], optional = true }
-wf-unpack = { git = "https://github.com/patodois/wf-unpack", rev = "1fc757ac0f668ad78309ba5977dbb8ca69074df4", features = ["bridge"], optional = true }
-hytale-unpack = { git = "https://github.com/patodois/hytale-unpack", rev = "310a002121302c40773a1244cab72e4a499bd37f", optional = true }
+# The providers, by public git revision. All of them pin rewrite-bridge at the revision above, so
+# Cargo.lock holds one copy of it.
+wt-unpack = { git = "https://github.com/patodois/wt-unpack", rev = "749d1ac2601a291cebd491e09826b6400b20cefe", features = ["bridge"], optional = true }
+wf-unpack = { git = "https://github.com/patodois/wf-unpack", rev = "d5c33e7cba2ee63d254a6d6f742acdf6bdabf1e4", features = ["bridge"], optional = true }
+hytale-unpack = { git = "https://github.com/patodois/hytale-unpack", rev = "9bbf06622d423d87db19bd098b671eeebb7a1734", optional = true }
+nocturne-unpack = { git = "https://github.com/patodois/nocturne-unpack", rev = "826b963badf762705e37c0c7cd43a5513dfe4c22", features = ["bridge"], optional = true }
 libc = "0.2"
+
+# nocturne-unpack reads Unity 2019.4 bundles with a patched copy of rabex 0.2.1 (its vendor/rabex, see its
+# NOTES-upstream.md), wired in by a [patch] that only applies in its own workspace. This applies the same
+# copy here, from the same public revision.
+[patch.crates-io]
+rabex = { git = "https://github.com/patodois/nocturne-unpack", rev = "826b963badf762705e37c0c7cd43a5513dfe4c22" }
 
 [dependencies.bevy]
 version = "0.20"
@@ -68,12 +73,11 @@ features = [
 ]
 
 [features]
-default = ["wt", "wf", "hytale"]
+default = ["wt", "wf", "hytale", "nocturne"]
 wt = ["dep:wt-unpack"]
 wf = ["dep:wf-unpack"]
 hytale = ["dep:hytale-unpack"]
-# A slot only: nocturne-unpack is still being written. See README.md for how to wire it.
-nocturne = []
+nocturne = ["dep:nocturne-unpack"]
 
 # Bevy and the game readers are far too slow without optimisations; keep our own code debuggable
 [profile.dev.package."*"]

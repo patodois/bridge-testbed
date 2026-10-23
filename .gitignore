@@ -1,8 +1,6 @@
 /target
 # Local paths to the owner's game installs
 /testbed.toml
-# Local cargo patches (see .cargo/config.toml.example)
-/.cargo/config.toml
 # Renders of game content are never committed
 /shots/
 /captures/

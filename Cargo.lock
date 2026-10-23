@@ -1850,6 +1850,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "block-buffer"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2f6c7dbe95a6ed67ad9f18e57daf93a2f034c524b99fd2b76d18fdfeb6660aa"
+dependencies = [
+ "hybrid-array",
+]
+
+[[package]]
 name = "block-pseudorand"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1900,6 +1909,7 @@ dependencies = [
  "clap",
  "hytale-unpack",
  "libc",
+ "nocturne-unpack",
  "png",
  "rewrite-bridge",
  "rewrite-bridge-bevy",
@@ -2174,6 +2184,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32b13ea120a812beba79e34316b3942a857c86ec1593cb34f27bb28272ce2cca"
 
 [[package]]
+name = "const-oid"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a6ef517f0926dd24a1582492c791b6a4818a4d94e789a334894aa15b0d12f55c"
+
+[[package]]
 name = "const_panic"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2260,6 +2276,21 @@ checksum = "5ca28b0ae3115b884660db4118d803791fd6756b6e88f39c0f3f7859060d7566"
 dependencies = [
  "libc",
 ]
+
+[[package]]
+name = "crc"
+version = "3.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5eb8a2a1cd12ab0d987a5d5e825195d372001a4094a0376319d5a0ad71c1ba0d"
+dependencies = [
+ "crc-catalog",
+]
+
+[[package]]
+name = "crc-catalog"
+version = "2.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "217698eaf96b4a3f0bc4f3662aaa55bdf913cd54d7204591faa790070c6d0853"
 
 [[package]]
 name = "crc32fast"
@@ -2372,6 +2403,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "crypto-common"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce6e4c961d6cd6c9a86db418387425e8bdeaf05b3c8bc1411e6dca4c252f1453"
+dependencies = [
+ "hybrid-array",
+]
+
+[[package]]
 name = "ctrlc"
 version = "3.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2417,8 +2457,19 @@ version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9ed9a281f7bc9b7576e61468ba615a66a5c8cfdff42420a70aa82701a3b1e292"
 dependencies = [
- "block-buffer",
- "crypto-common",
+ "block-buffer 0.10.4",
+ "crypto-common 0.1.7",
+]
+
+[[package]]
+name = "digest"
+version = "0.11.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1dd6dbb5841937940781866fa1281a1ff7bd3bf827091440879f9994983d5c2"
+dependencies = [
+ "block-buffer 0.12.1",
+ "const-oid",
+ "crypto-common 0.2.2",
 ]
 
 [[package]]
@@ -2497,6 +2548,15 @@ name = "either"
 version = "1.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e9c71c2167ca323c882b99918929403426e2373ea17242ff5653e0d5e1058be"
+
+[[package]]
+name = "elsa"
+version = "1.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9abf33c656a7256451ebb7d0082c5a471820c31269e49d807c538c252352186e"
+dependencies = [
+ "stable_deref_trait",
+]
 
 [[package]]
 name = "ena"
@@ -3085,9 +3145,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "hybrid-array"
+version = "0.4.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "27f864f10dfb56725ce5ce5472bc52252c8f93a4ab86327122cebf62c5f59a17"
+dependencies = [
+ "typenum",
+]
+
+[[package]]
 name = "hytale-unpack"
 version = "0.1.0"
-source = "git+https://github.com/patodois/hytale-unpack?rev=310a002121302c40773a1244cab72e4a499bd37f#310a002121302c40773a1244cab72e4a499bd37f"
+source = "git+https://github.com/patodois/hytale-unpack?rev=9bbf06622d423d87db19bd098b671eeebb7a1734#9bbf06622d423d87db19bd098b671eeebb7a1734"
 dependencies = [
  "anyhow",
  "clap",
@@ -3609,6 +3678,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "lz4_flex"
+version = "0.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ef0d4ed8669f8f8826eb00dc878084aa8f253506c4fd5e8f58f5bce72ddb97e"
+
+[[package]]
+name = "lzma-rs"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "297e814c836ae64db86b36cf2a557ba54368d03f6afcd7d947c266692f71115e"
+dependencies = [
+ "byteorder",
+ "crc",
+]
+
+[[package]]
 name = "matchers"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3624,7 +3709,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d89e7ee0cfbedfc4da3340218492196241d89eefb6dab27de5df917a6d2e78cf"
 dependencies = [
  "cfg-if",
- "digest",
+ "digest 0.10.7",
+]
+
+[[package]]
+name = "md4"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bd76fb0fd6b2e4be62a73f8e0858ca97f81babcb1af322dcaca196f735f17f80"
+dependencies = [
+ "digest 0.11.3",
 ]
 
 [[package]]
@@ -3769,6 +3863,23 @@ dependencies = [
  "cfg-if",
  "cfg_aliases",
  "libc",
+]
+
+[[package]]
+name = "nocturne-unpack"
+version = "0.1.0"
+source = "git+https://github.com/patodois/nocturne-unpack?rev=826b963badf762705e37c0c7cd43a5513dfe4c22#826b963badf762705e37c0c7cd43a5513dfe4c22"
+dependencies = [
+ "anyhow",
+ "clap",
+ "libc",
+ "memmap2",
+ "png",
+ "rabex",
+ "rewrite-bridge",
+ "serde",
+ "serde_json",
+ "texture2ddecoder",
 ]
 
 [[package]]
@@ -4621,6 +4732,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 
 [[package]]
+name = "rabex"
+version = "0.2.1"
+source = "git+https://github.com/patodois/nocturne-unpack?rev=826b963badf762705e37c0c7cd43a5513dfe4c22#826b963badf762705e37c0c7cd43a5513dfe4c22"
+dependencies = [
+ "bitflags 2.13.2",
+ "byteorder",
+ "elsa",
+ "lz4_flex",
+ "lzma-rs",
+ "md4",
+ "num_enum",
+ "rustc-hash 2.1.3",
+ "serde",
+ "serde_derive",
+]
+
+[[package]]
 name = "radium"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4798,10 +4926,12 @@ checksum = "19b30a45b0cd0bcca8037f3d0dc3421eaf95327a17cad11964fb8179b4fc4832"
 [[package]]
 name = "rewrite-bridge"
 version = "0.1.0"
+source = "git+https://github.com/patodois/rewrite-bridge?rev=0c5d0b0e08fcff58166f2ed6ad3daf9bdc72c0a8#0c5d0b0e08fcff58166f2ed6ad3daf9bdc72c0a8"
 
 [[package]]
 name = "rewrite-bridge-bevy"
 version = "0.1.0"
+source = "git+https://github.com/patodois/rewrite-bridge?rev=0c5d0b0e08fcff58166f2ed6ad3daf9bdc72c0a8#0c5d0b0e08fcff58166f2ed6ad3daf9bdc72c0a8"
 dependencies = [
  "bevy",
  "rewrite-bridge",
@@ -6076,6 +6206,7 @@ dependencies = [
 [[package]]
 name = "wf-unpack"
 version = "0.1.0"
+source = "git+https://github.com/patodois/wf-unpack?rev=d5c33e7cba2ee63d254a6d6f742acdf6bdabf1e4#d5c33e7cba2ee63d254a6d6f742acdf6bdabf1e4"
 dependencies = [
  "anyhow",
  "clap",
@@ -6597,7 +6728,7 @@ checksum = "3ad82d2a33cdc9674dc7465672f271e096168fcdbe0f799d9e6db8c5892679dc"
 [[package]]
 name = "wt-unpack"
 version = "0.1.0"
-source = "git+https://github.com/patodois/wt-unpack?rev=89188d3671c1d496a63b205cf2400349ccbb6fca#89188d3671c1d496a63b205cf2400349ccbb6fca"
+source = "git+https://github.com/patodois/wt-unpack?rev=749d1ac2601a291cebd491e09826b6400b20cefe#749d1ac2601a291cebd491e09826b6400b20cefe"
 dependencies = [
  "anyhow",
  "clap",

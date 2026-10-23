@@ -9,6 +9,7 @@
 //! | `view ex,ey,ez,tx,ty,tz` | puts the camera at e looking at t |
 //! | `frame LABEL [H]` / `frame all` | frames an item's AABB (H extra metres above it), or everything |
 //! | `select LABEL` | the HUD's item |
+//! | `front LABEL` | frames an item from straight in front of it (+Z) |
 //! | `clip LABEL N` | sets item's clip (1-based) |
 //! | `drop [LABEL]` / `stack` / `reset` | the physics keys |
 //! | `set help\|labels\|aabb\|grid on\|off` | the view toggles |
@@ -36,6 +37,8 @@ pub enum Command {
     /// An item (or everything), with this many extra metres above it
     Frame(Option<String>, f32),
     Select(String),
+    /// Looks at an item from straight in front of it (from +Z)
+    Front(String),
     Clip(String, usize),
     /// Pauses the item's clip at this time, seconds
     Seek(String, f32),
@@ -82,6 +85,7 @@ pub fn parse(script: &str) -> Result<Vec<Command>> {
                 Command::Frame((label != "all").then(|| label.to_string()), extra)
             }
             "select" => Command::Select(rest.to_string()),
+            "front" => Command::Front(rest.to_string()),
             "clip" => {
                 let (l, n) = rest
                     .rsplit_once(' ')
@@ -227,6 +231,17 @@ pub fn run(
             };
             request.0 =
                 bounds.map(|b| crate::analyze::Aabb::new(b.min(), b.max() + Vec3::Y * extra));
+            script.wait_frames = 4;
+        }
+        Command::Front(l) => {
+            match find(&gallery, &l).and_then(|i| gallery.items[i].aabb) {
+                Some(b) => {
+                    orbit.yaw = 0.0;
+                    orbit.pitch = 0.08;
+                    request.0 = Some(b);
+                }
+                None => warn!("script: no item {l:?} to look at"),
+            }
             script.wait_frames = 4;
         }
         Command::Select(l) => match find(&gallery, &l) {

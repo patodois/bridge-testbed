@@ -5,7 +5,8 @@ on:
   pull_request:
 
 # CI has no game data, so it builds and lints; the tests that run need none. Running the testbed needs a
-# testbed.toml and the owner's installs.
+# testbed.toml and the owner's installs. Every dependency is a public crate or a public git revision, so
+# there is nothing to patch.
 jobs:
   build:
     name: Build and clippy (${{ matrix.os }})
@@ -22,18 +23,6 @@ jobs:
       - name: System packages for Bevy's windowing (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libwayland-dev libxkbcommon-dev libx11-dev
-      # The providers pin rewrite-bridge at 1b58201 and rewrite-bridge-bevy is at 4340109; one copy of both
-      # (see .cargo/config.toml.example)
-      - name: One copy of rewrite-bridge
-        run: |
-          git clone https://github.com/patodois/rewrite-bridge "$RUNNER_TEMP/rewrite-bridge-pin"
-          git -C "$RUNNER_TEMP/rewrite-bridge-pin" checkout 4340109034667921f719f7ae1cff36c817604f9b
-          mkdir -p .cargo
-          cat > .cargo/config.toml <<EOF
-          [patch."https://github.com/patodois/rewrite-bridge"]
-          rewrite-bridge = { path = "$RUNNER_TEMP/rewrite-bridge-pin" }
-          rewrite-bridge-bevy = { path = "$RUNNER_TEMP/rewrite-bridge-pin/rewrite-bridge-bevy" }
-          EOF
       - uses: actions/cache@v4
         with:
           path: |
@@ -43,7 +32,7 @@ jobs:
           key: testbed-${{ matrix.os }}-${{ hashFiles('Cargo.lock') }}
           restore-keys: testbed-${{ matrix.os }}-
       - run: cargo fmt --check
-      # wf is left out until wf-unpack's bridge2 branch (animated ids, level scenes) is on GitHub
-      - run: cargo build --no-default-features --features wt,hytale
-      - run: cargo clippy --all-targets --no-default-features --features wt,hytale -- -D warnings
-      - run: cargo test --no-default-features --features wt,hytale
+      # Every provider feature (wt, wf, hytale, nocturne), all from public git revisions
+      - run: cargo build --locked
+      - run: cargo clippy --locked --all-targets -- -D warnings
+      - run: cargo test --locked

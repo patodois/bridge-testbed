@@ -12,6 +12,17 @@ use serde::Serialize;
 /// Most triangles a static trimesh collider may have. Over this the collider is skipped and the UI says so.
 pub const MAX_TRIMESH_TRIANGLES: usize = 1_500_000;
 
+/// Placements farther than this from the origin (metres) are left out of a scene's bounds and colliders and
+/// reported: a level is a few kilometres across, and a stray placement at 10^11 m would stretch the box
+pub const MAX_PLACEMENT_M: f32 = 100_000.0;
+
+/// Whether a placement is within [`MAX_PLACEMENT_M`] of the origin
+pub fn placement_ok(t: &rb::Transform) -> bool {
+    t.translation
+        .iter()
+        .all(|c| c.is_finite() && c.abs() <= MAX_PLACEMENT_M)
+}
+
 /// World-space axis-aligned box in metres
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 pub struct Aabb {
@@ -93,6 +104,10 @@ pub struct Stats {
     pub normal_checked_triangles: usize,
     pub double_sided_materials: usize,
     pub blended_materials: usize,
+    /// Scene placements beyond [`MAX_PLACEMENT_M`] of the origin, left out of the bounds and colliders
+    pub stray_placements: usize,
+    /// Scene models with vertices beyond [`MAX_PLACEMENT_M`] (provider data gone wrong), left out of the bounds
+    pub stray_models: Vec<String>,
 }
 
 impl Stats {
@@ -265,7 +280,14 @@ pub fn scene_stats(scene: &rb::Scene) -> (Stats, Option<Aabb>) {
         .models
         .iter()
         .map(|sm| match sm {
-            rb::SceneModel::Inline(model) => model_bounds(model),
+            rb::SceneModel::Inline(model) => {
+                let b = model_bounds(model)?;
+                if b.size().max_element() > 2.0 * MAX_PLACEMENT_M {
+                    s.stray_models.push(model.name.clone());
+                    return None;
+                }
+                Some(b)
+            }
             _ => None,
         })
         .collect();
@@ -284,6 +306,10 @@ pub fn scene_stats(scene: &rb::Scene) -> (Stats, Option<Aabb>) {
     }
     for inst in &scene.instances {
         s.instances += 1;
+        if !placement_ok(&inst.transform) {
+            s.stray_placements += 1;
+            continue;
+        }
         if let Some(Some(b)) = per_model.get(inst.model) {
             let b = b.transformed(&instance_matrix(&inst.transform));
             bounds = Some(bounds.map_or(b, |x| x.union(b)));
@@ -355,7 +381,11 @@ pub enum CollisionSource {
 pub struct Trimesh {
     pub vertices: Vec<Vec3>,
     pub triangles: Vec<[u32; 3]>,
+    /// Capsule shapes a triangle mesh cannot hold (War Thunder's tree trunks): two end points and a radius
+    pub capsules: Vec<([Vec3; 2], f32)>,
     pub source: CollisionSource,
+    /// What the shapes are, for the HUD
+    pub detail: String,
 }
 
 /// A scene's placed triangles as one trimesh, or the reason there is none
@@ -371,6 +401,7 @@ pub fn scene_trimesh(scene: &rb::Scene, source: CollisionSource) -> Result<Trime
     let total: usize = scene
         .instances
         .iter()
+        .filter(|i| placement_ok(&i.transform))
         .filter_map(|i| geoms.get(i.model).and_then(|g| g.as_ref()))
         .map(|g| g.triangles.len())
         .sum();
@@ -385,9 +416,15 @@ pub fn scene_trimesh(scene: &rb::Scene, source: CollisionSource) -> Result<Trime
     let mut out = Trimesh {
         vertices: Vec::new(),
         triangles: Vec::with_capacity(total),
+        capsules: Vec::new(),
         source,
+        detail: String::new(),
     };
-    for inst in &scene.instances {
+    for inst in scene
+        .instances
+        .iter()
+        .filter(|i| placement_ok(&i.transform))
+    {
         let Some(Some(g)) = geoms.get(inst.model) else {
             continue;
         };

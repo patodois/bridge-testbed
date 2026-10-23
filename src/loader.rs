@@ -118,6 +118,10 @@ pub fn load_item(providers: &ProviderSet, item: &ItemConfig) -> Result<Loaded, S
                 }
             }
             if item.collide {
+                #[cfg(feature = "wt")]
+                wt_object_collision(providers, item, &am.model.name, &mut collision);
+            }
+            if item.collide && collision.trimesh.is_none() {
                 let g = analyze::rest_geometry(&am.model);
                 if g.triangles.len() > analyze::MAX_TRIMESH_TRIANGLES {
                     collision.note = Some(format!(
@@ -128,7 +132,9 @@ pub fn load_item(providers: &ProviderSet, item: &ItemConfig) -> Result<Loaded, S
                     collision.trimesh = Some(Trimesh {
                         vertices: g.vertices,
                         triangles: g.triangles,
+                        capsules: Vec::new(),
                         source: CollisionSource::RenderMeshes,
+                        detail: String::new(),
                     });
                 }
             }
@@ -167,6 +173,10 @@ pub fn load_item(providers: &ProviderSet, item: &ItemConfig) -> Result<Loaded, S
                     }
                 }
             }
+            #[cfg(feature = "wt")]
+            if collision.trimesh.is_none() {
+                wt_level_collision(providers, item, &scene, &mut collision);
+            }
             if collision.trimesh.is_none() {
                 match analyze::scene_trimesh(&scene, CollisionSource::RenderMeshes) {
                     Ok(t) => collision.trimesh = Some(t),
@@ -189,8 +199,31 @@ pub fn load_item(providers: &ProviderSet, item: &ItemConfig) -> Result<Loaded, S
             }
         }
     };
+    if item.provider == "nocturne" && (item.dynamic || item.collide || item.kind == ItemKind::Scene)
+    {
+        let n = "Nocturne has no collision data in the bridge";
+        loaded.collision.note = Some(match loaded.collision.note.take() {
+            Some(x) => format!("{x}; {n}"),
+            None => n.to_string(),
+        });
+    }
     // Hints, not verdicts: a person looks at the picture
     let s = &loaded.stats;
+    if !s.stray_models.is_empty() {
+        warnings.push(format!(
+            "{} models have vertices beyond {} km (provider data), left out of the bounds: {}",
+            s.stray_models.len(),
+            analyze::MAX_PLACEMENT_M / 1000.0,
+            s.stray_models.join(", ")
+        ));
+    }
+    if s.stray_placements > 0 {
+        warnings.push(format!(
+            "{} placements are farther than {} km from the origin; they are left out of the bounds and the colliders",
+            s.stray_placements,
+            analyze::MAX_PLACEMENT_M / 1000.0
+        ));
+    }
     if s.normal_checked_triangles > 0 && s.flipped_triangles * 100 > s.normal_checked_triangles {
         warnings.push(format!(
             "{} of {} triangles wind against their normals",
@@ -246,6 +279,57 @@ fn resolve(
         }
     }
     scene
+}
+
+/// A War Thunder object's own collision for a model item: `collision_id` names the object, else the model's
+/// name is tried. Vehicles have none, and the item then falls back to its render meshes.
+#[cfg(feature = "wt")]
+fn wt_object_collision(
+    providers: &ProviderSet,
+    item: &ItemConfig,
+    model_name: &str,
+    collision: &mut Collision,
+) {
+    let Some(wt) = providers.wt(&item.provider) else {
+        return;
+    };
+    let name = item
+        .collision_id
+        .clone()
+        .unwrap_or_else(|| item.id.rsplit(':').next().unwrap_or(model_name).to_string());
+    match wt.load_object_collision(&name) {
+        Ok(Some(o)) => match crate::wt_collision::object_trimesh(&o) {
+            Ok(t) => collision.trimesh = Some(t),
+            Err(e) => collision.note = Some(e),
+        },
+        Ok(None) => {
+            collision.note = Some(format!(
+            "the game has no collision resource {name}_collision (War Thunder vehicles have none)"
+        ))
+        }
+        Err(e) => collision.note = Some(format!("collision of {name}: {e:#}")),
+    }
+}
+
+/// A War Thunder level's own collision (`load_level_collision`) for a scene item
+#[cfg(feature = "wt")]
+fn wt_level_collision(
+    providers: &ProviderSet,
+    item: &ItemConfig,
+    scene: &rb::Scene,
+    collision: &mut Collision,
+) {
+    let Some(wt) = providers.wt(&item.provider) else {
+        return;
+    };
+    match wt
+        .load_level_collision(&item.id)
+        .map_err(|e| format!("{e:#}"))
+        .and_then(|lc| crate::wt_collision::level_trimesh(scene, &lc))
+    {
+        Ok(t) => collision.trimesh = Some(t),
+        Err(e) => collision.note = Some(format!("the level's own collision: {e}")),
+    }
 }
 
 #[cfg(test)]
@@ -346,7 +430,7 @@ mod tests {
     }
 
     fn set() -> ProviderSet {
-        ProviderSet::with_providers(vec![("wt", Box::new(Fake))])
+        ProviderSet::with_providers(vec![("wt", std::sync::Arc::new(Fake))])
     }
 
     fn item(kind: ItemKind, id: &str, dynamic: bool) -> ItemConfig {

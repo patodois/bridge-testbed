@@ -1,8 +1,9 @@
 //! Physics with Avian 3D. Every value here is an assumption of the testbed: the bridge carries no
 //! physics data yet (no masses, no friction, no collision shapes). The HUD and the README say so.
 //!
-//! - static trimesh colliders for scenes (the provider's own collision where it gave some, else the
-//!   render meshes) and for models flagged `collide`;
+//! - static colliders for scenes and for models flagged `collide`: the game's own collision shapes where the
+//!   provider has them (Warframe `?collision`, War Thunder's level and object collision), else a trimesh of the
+//!   render meshes, which is a testbed assumption;
 //! - convex-hull rigid bodies for models flagged `dynamic`, mass = density x hull volume, 1 kg per m3
 //!   by default; they wait, disabled, at their slot until dropped;
 //! - Space drops the selected prop from `drop_height` metres, B spawns a pyramid of the stack block
@@ -75,17 +76,32 @@ pub fn attach(
     } else if let Some(t) = trimesh {
         let what = match t.source {
             CollisionSource::ProviderCollision => {
-                "static trimesh of the provider's own collision shapes"
+                "static collider of the game's own collision shapes"
             }
             CollisionSource::RenderMeshes => {
-                "static trimesh of the render meshes (testbed assumption)"
+                "static trimesh of the render meshes (testbed assumption, not game collision)"
             }
         };
-        notes.push(format!("{what}, {} triangles", t.triangles.len()));
-        commands.entity(root).insert((
-            RigidBody::Static,
-            Collider::trimesh(t.vertices, t.triangles),
-        ));
+        let shapes = if t.detail.is_empty() {
+            format!("{} triangles", t.triangles.len())
+        } else {
+            t.detail.clone()
+        };
+        notes.push(format!("{what}: {shapes}"));
+        commands.entity(root).insert(RigidBody::Static);
+        if !t.triangles.is_empty() {
+            commands
+                .entity(root)
+                .insert(Collider::trimesh(t.vertices, t.triangles));
+        }
+        // A trimesh cannot sit inside a compound shape, so each capsule is a child collider of the body
+        for ([a, b], r) in t.capsules {
+            commands.spawn((
+                Collider::capsule_endpoints(r, a, b),
+                Transform::IDENTITY,
+                ChildOf(root),
+            ));
+        }
     }
     if let Some(n) = note {
         notes.push(n);

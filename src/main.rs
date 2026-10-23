@@ -17,6 +17,8 @@ mod providers;
 mod refs;
 mod shots;
 mod stage;
+#[cfg(feature = "wt")]
+mod wt_collision;
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
