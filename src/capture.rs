@@ -12,6 +12,7 @@
 //! | `clip LABEL N` | sets item's clip (1-based) |
 //! | `drop [LABEL]` / `stack` / `reset` | the physics keys |
 //! | `set help\|labels\|aabb\|grid on\|off` | the view toggles |
+//! | `seek LABEL S` | pauses the item's clip at S seconds |
 //! | `key SPACE` / `key shift+c` | presses keys for a frame, so the real key handlers run |
 //! | `shot NAME` | writes `NAME.png` into the output folder |
 
@@ -20,7 +21,7 @@ use std::path::PathBuf;
 use anyhow::{bail, Result};
 use avian3d::prelude::*;
 use bevy::prelude::*;
-use rewrite_bridge_bevy::Bridge;
+use rewrite_bridge_bevy::{Bridge, BridgeAnimations};
 
 use crate::camera::{FrameRequest, Orbit};
 use crate::gallery::Gallery;
@@ -36,6 +37,8 @@ pub enum Command {
     Frame(Option<String>, f32),
     Select(String),
     Clip(String, usize),
+    /// Pauses the item's clip at this time, seconds
+    Seek(String, f32),
     Drop(Option<String>),
     Stack,
     Reset,
@@ -84,6 +87,12 @@ pub fn parse(script: &str) -> Result<Vec<Command>> {
                     .rsplit_once(' ')
                     .ok_or_else(|| anyhow::anyhow!("clip LABEL N: {raw}"))?;
                 Command::Clip(l.trim().to_string(), n.trim().parse()?)
+            }
+            "seek" => {
+                let (l, t) = rest
+                    .rsplit_once(' ')
+                    .ok_or_else(|| anyhow::anyhow!("seek LABEL SECONDS: {raw}"))?;
+                Command::Seek(l.trim().to_string(), t.trim().parse()?)
             }
             "drop" => Command::Drop((!rest.is_empty()).then(|| rest.to_string())),
             "stack" => Command::Stack,
@@ -167,6 +176,7 @@ pub fn run(
     mut ready_frames: Local<u32>,
     mut keys: ResMut<ButtonInput<KeyCode>>,
     mut held: Local<Vec<KeyCode>>,
+    mut players: Query<(&BridgeAnimations, &mut AnimationPlayer)>,
 ) {
     // Keys pressed by the previous command are let go
     for k in held.drain(..) {
@@ -228,6 +238,21 @@ pub fn run(
                 let nc = gallery.items[i].clips.len();
                 if nc > 0 {
                     gallery.items[i].clip.current = (n.max(1) - 1).min(nc - 1);
+                }
+            }
+        }
+        Command::Seek(l, t) => {
+            if let Some(i) = find(&gallery, &l) {
+                let item = &mut gallery.items[i];
+                item.clip.paused = true;
+                if let (Some(root), Some(c)) = (item.root, item.clip.applied) {
+                    if let Ok((clips, mut player)) = players.get_mut(root) {
+                        if let Some(clip) = clips.clips().get(c) {
+                            if let Some(a) = player.animation_mut(clip.node) {
+                                a.seek_to(t).pause();
+                            }
+                        }
+                    }
                 }
             }
         }
