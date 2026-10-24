@@ -3156,7 +3156,7 @@ dependencies = [
 [[package]]
 name = "hytale-unpack"
 version = "0.1.0"
-source = "git+https://github.com/patodois/hytale-unpack?rev=5ae844ce0e3c33b6afc29f332e79ff933efcee48#5ae844ce0e3c33b6afc29f332e79ff933efcee48"
+source = "git+https://github.com/patodois/hytale-unpack?rev=dbc7cbee5560c857f84f0967f97a8986b2193d2e#dbc7cbee5560c857f84f0967f97a8986b2193d2e"
 dependencies = [
  "anyhow",
  "clap",
@@ -3868,7 +3868,7 @@ dependencies = [
 [[package]]
 name = "nocturne-unpack"
 version = "0.1.0"
-source = "git+https://github.com/patodois/nocturne-unpack?rev=623c46412f50cfdb0d950301931244f91cb82b89#623c46412f50cfdb0d950301931244f91cb82b89"
+source = "git+https://github.com/patodois/nocturne-unpack?rev=49df6cc0df8e1d60d9e0b1c6cc84473ee45d28e6#49df6cc0df8e1d60d9e0b1c6cc84473ee45d28e6"
 dependencies = [
  "anyhow",
  "clap",
@@ -4734,7 +4734,7 @@ checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 [[package]]
 name = "rabex"
 version = "0.2.1"
-source = "git+https://github.com/patodois/nocturne-unpack?rev=623c46412f50cfdb0d950301931244f91cb82b89#623c46412f50cfdb0d950301931244f91cb82b89"
+source = "git+https://github.com/patodois/RustyAssetBundleEXtractor?rev=56dd8a4d8d5048b6ee7664eadc89d98343c66002#56dd8a4d8d5048b6ee7664eadc89d98343c66002"
 dependencies = [
  "bitflags 2.13.2",
  "byteorder",
@@ -4925,13 +4925,15 @@ checksum = "19b30a45b0cd0bcca8037f3d0dc3421eaf95327a17cad11964fb8179b4fc4832"
 
 [[package]]
 name = "rewrite-bridge"
-version = "0.1.0"
-source = "git+https://github.com/patodois/rewrite-bridge?tag=v0.1.0#1f13c110ad50b181f2d5ca64e408948b1f2ec39e"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5b425441f7580367054f138cf3d8a4e2d3ebcfbf6e5077400756ecd4b5ba57a3"
 
 [[package]]
 name = "rewrite-bridge-bevy"
-version = "0.1.0"
-source = "git+https://github.com/patodois/rewrite-bridge?tag=v0.1.0#1f13c110ad50b181f2d5ca64e408948b1f2ec39e"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae5a721f63c38264ff2467d050ac48c49691cc90191569fc1ee27c0922d9c241"
 dependencies = [
  "bevy",
  "rewrite-bridge",
@@ -6206,7 +6208,7 @@ dependencies = [
 [[package]]
 name = "wf-unpack"
 version = "0.1.0"
-source = "git+https://github.com/patodois/wf-unpack?rev=283c02f403fa464075c37eeccb426e29f02f5c9f#283c02f403fa464075c37eeccb426e29f02f5c9f"
+source = "git+https://github.com/patodois/wf-unpack?rev=e3ec925fb82221b252a15fa5e1cd2e20cd8eef4c#e3ec925fb82221b252a15fa5e1cd2e20cd8eef4c"
 dependencies = [
  "anyhow",
  "clap",
@@ -6728,7 +6730,7 @@ checksum = "3ad82d2a33cdc9674dc7465672f271e096168fcdbe0f799d9e6db8c5892679dc"
 [[package]]
 name = "wt-unpack"
 version = "0.1.0"
-source = "git+https://github.com/patodois/wt-unpack?rev=b2081dc466a7dfb0748c7e0f347d24f36f1e78ed#b2081dc466a7dfb0748c7e0f347d24f36f1e78ed"
+source = "git+https://github.com/patodois/wt-unpack?rev=4915291663efa60aab97dd781b3fd507bc8de34a#4915291663efa60aab97dd781b3fd507bc8de34a"
 dependencies = [
  "anyhow",
  "clap",

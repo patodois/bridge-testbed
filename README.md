@@ -1,5 +1,8 @@
 # bridge-testbed
 
+[![rewrite-bridge on crates.io](https://img.shields.io/crates/v/rewrite-bridge.svg?label=rewrite-bridge)](https://crates.io/crates/rewrite-bridge)
+[![rewrite-bridge-bevy on crates.io](https://img.shields.io/crates/v/rewrite-bridge-bevy.svg?label=rewrite-bridge-bevy)](https://crates.io/crates/rewrite-bridge-bevy)
+
 A [Bevy](https://bevy.org) 0.20 app that loads assets from every [rewrite-bridge](https://github.com/patodois/rewrite-bridge)
 provider side by side, so that scale, orientation, animation, materials and physics can be checked visually across
 games. It also renders fixed shots headless, for visual regression.
@@ -197,10 +200,10 @@ The commands are listed in `src/capture.rs`.
 
 | name | crate | notes |
 |---|---|---|
-| `wt` | [wt-unpack](https://github.com/patodois/wt-unpack) `b2081dc` | vehicles; `load_scene` for levels (a whole map is heavy, about 1.2 GB for Berlin, so none is in the default config); the game's collision of objects and levels |
-| `wf` | [wf-unpack](https://github.com/patodois/wf-unpack) `283c02f` | models, animated ids, level scenes and `?collision` scenes |
-| `hytale` | [hytale-unpack](https://github.com/patodois/hytale-unpack) `5ae844c` | entity models with clips, blocks, prefabs |
-| `nocturne` | [nocturne-unpack](https://github.com/patodois/nocturne-unpack) `623c464` | demons with the clips of their animator, field prefabs as scenes; no collision data |
+| `wt` | [wt-unpack](https://github.com/patodois/wt-unpack) `4915291` | vehicles; `load_scene` for levels (a whole map is heavy, about 1.2 GB for Berlin, so none is in the default config); the game's collision of objects and levels |
+| `wf` | [wf-unpack](https://github.com/patodois/wf-unpack) `e3ec925` | models, animated ids, level scenes and `?collision` scenes |
+| `hytale` | [hytale-unpack](https://github.com/patodois/hytale-unpack) `dbc7cbe` | entity models with clips, blocks, prefabs |
+| `nocturne` | [nocturne-unpack](https://github.com/patodois/nocturne-unpack) `49df6cc` | demons with the clips of their animator, field prefabs as scenes; no collision data |
 
 Each is behind a cargo feature (`wt`, `wf`, `hytale`, `nocturne`, all on by default). A provider that is not configured,
 or whose game is not installed, shows an error label at its items' slots and nothing else.
@@ -208,13 +211,15 @@ or whose game is not installed, shows an error label at its items' slots and not
 ### Dependencies
 
 Every dependency is a public crate or a public git revision; there is nothing to patch locally. `rewrite-bridge` and
-`rewrite-bridge-bevy` are pinned at the tag `v0.1.0` and all four providers pin `rewrite-bridge` at that same tag, so
-`Cargo.lock` holds exactly one copy (`grep -c 'name = "rewrite-bridge"' Cargo.lock` prints 1). Move all pins together.
+`rewrite-bridge-bevy` come from [crates.io](https://crates.io/crates/rewrite-bridge) (`0.2.1`), and all four providers ask
+crates.io for `rewrite-bridge` `0.2.1` too, so Cargo builds one copy: `cargo tree -i rewrite-bridge` prints a single
+`rewrite-bridge v0.2.1` whose children are the testbed, the providers and `rewrite-bridge-bevy`, and
+`grep -c 'name = "rewrite-bridge"' Cargo.lock` prints 1. Move the providers' revisions
+together, and keep them on the same `0.x` line of rewrite-bridge as the two lines above: a provider on another line would
+be a second copy.
 
-nocturne-unpack reads Unity 2019.4 bundles with a patched copy of rabex 0.2.1 that lives in its `vendor/rabex` and is wired
-in by a `[patch.crates-io]` that Cargo only applies in its own workspace. `Cargo.toml` here repeats it, pointing at the same
-public revision of nocturne-unpack (Cargo finds the `rabex` package inside that repository). Drop it when upstream rabex
-opens these bundles.
+nocturne-unpack reads Unity 2019.4 bundles with a patched fork of rabex 0.2.1 that it takes as a git dependency itself
+(see its `NOTES-upstream.md`), so nothing is repeated here. Drop it when upstream rabex opens these bundles.
 
 ## Memory and disk
 
