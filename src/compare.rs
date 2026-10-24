@@ -87,7 +87,8 @@ pub fn diff(a: &Rgba, b: &Rgba, tolerance: u8) -> (Diff, Rgba) {
         .iter()
         .zip(b.data.as_chunks::<4>().0.iter())
     {
-        let d = (0..3).map(|k| pa[k].abs_diff(pb[k])).max().unwrap_or(0);
+        // Alpha counts for the difference too: an unlit shot's silhouette is its alpha
+        let d = (0..4).map(|k| pa[k].abs_diff(pb[k])).max().unwrap_or(0);
         sum += (0..3)
             .map(|k| u64::from(pa[k].abs_diff(pb[k])))
             .sum::<u64>();
@@ -145,6 +146,12 @@ pub fn run(args: &Args) -> Result<usize> {
     let base = read_manifest(&args.base)?;
     let new = read_manifest(&args.new)?;
     std::fs::create_dir_all(&args.diff_out)?;
+    if (base.unlit, base.no_ground) != (new.unlit, new.no_ground) {
+        println!(
+            "note: the shots were taken with different flags (base: unlit {}, no ground {}; new: unlit {}, no ground {})",
+            base.unlit, base.no_ground, new.unlit, new.no_ground
+        );
+    }
     let mut labels: Vec<&str> = base
         .items
         .iter()

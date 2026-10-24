@@ -10,7 +10,7 @@ use bevy::asset::RenderAssetUsages;
 use bevy::camera::RenderTarget;
 use bevy::prelude::*;
 use bevy::render::render_resource::TextureFormat;
-use bevy::render::view::screenshot::{save_to_disk, Screenshot};
+use bevy::render::view::screenshot::{save_to_disk, Screenshot, ScreenshotCaptured};
 use bevy::time::TimeUpdateStrategy;
 use bevy::window::ExitCondition;
 use bevy::winit::WinitPlugin;
@@ -51,6 +51,30 @@ pub fn make_target(images: &mut Assets<Image>, size: UVec2) -> Handle<Image> {
 
 pub fn render_target(handle: Handle<Image>) -> RenderTarget {
     RenderTarget::from(handle)
+}
+
+/// Asks for the target to be saved with its alpha channel (`save` drops it); the file shows up a few
+/// frames later. Pixels are written as the target holds them, sRGB-encoded and straight, which is what
+/// they are when the camera does not anti-alias.
+pub fn save_rgba(commands: &mut Commands, target: &Handle<Image>, path: PathBuf) {
+    commands.spawn(Screenshot::image(target.clone())).observe(
+        move |captured: On<ScreenshotCaptured>| {
+            let write = || -> anyhow::Result<()> {
+                let rgba = captured.image.clone().try_into_dynamic()?.to_rgba8();
+                let file = std::fs::File::create(&path)?;
+                let mut enc =
+                    png::Encoder::new(std::io::BufWriter::new(file), rgba.width(), rgba.height());
+                enc.set_color(png::ColorType::Rgba);
+                enc.set_depth(png::BitDepth::Eight);
+                enc.write_header()?.write_image_data(rgba.as_raw())?;
+                Ok(())
+            };
+            match write() {
+                Ok(()) => info!("Screenshot saved to {}", path.display()),
+                Err(e) => error!("Cannot save screenshot {}: {e}", path.display()),
+            }
+        },
+    );
 }
 
 /// Asks for the target to be saved; the file shows up a few frames later

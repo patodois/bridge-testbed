@@ -15,6 +15,7 @@ mod offscreen;
 mod physics;
 mod providers;
 mod refs;
+mod restpose;
 mod shots;
 mod stage;
 #[cfg(feature = "wt")]
@@ -71,6 +72,22 @@ enum Command {
         /// Only the item with this label
         #[arg(long)]
         only: Option<String>,
+        /// No ground plane: the item floats on the background (for a silhouette against a reference)
+        #[arg(long)]
+        no_ground: bool,
+        /// Base colour only: no lights, no shadows, no tonemapping, no anti-aliasing, and a transparent
+        /// background (RGBA PNGs), so the item can be cut out
+        #[arg(long)]
+        unlit: bool,
+    },
+    /// Run the drop and stack scenes without a window and write every body's rest pose as JSON
+    Physics {
+        /// The JSON file to write
+        #[arg(long)]
+        out: PathBuf,
+        /// Simulated seconds per scene (each step is 1/60 s, so this is also the number of steps / 60)
+        #[arg(long, default_value_t = restpose::DEFAULT_SECONDS)]
+        seconds: f32,
     },
     /// Diff two shot folders per pixel; exits nonzero on regressions
     Compare {
@@ -169,7 +186,24 @@ fn main() -> Result<()> {
             }
             Ok(())
         }
-        Some(Command::Shots { out, only }) => {
+        Some(Command::Physics { out, seconds }) => {
+            anyhow::ensure!(
+                seconds.is_finite() && seconds > 0.0,
+                "--seconds must be a positive number"
+            );
+            let config = read_config(&cli.config)?;
+            if let Some(dir) = out.parent().filter(|d| !d.as_os_str().is_empty()) {
+                std::fs::create_dir_all(dir)?;
+            }
+            run_physics(config, out, seconds);
+            Ok(())
+        }
+        Some(Command::Shots {
+            out,
+            only,
+            no_ground,
+            unlit,
+        }) => {
             let mut config = read_config(&cli.config)?;
             shots::prepare_config(&mut config);
             if let Some(o) = &only {
@@ -178,7 +212,7 @@ fn main() -> Result<()> {
                 }
             }
             std::fs::create_dir_all(&out)?;
-            run_shots(config, out, only);
+            run_shots(config, out, only, shots::ShotOptions { no_ground, unlit });
             Ok(())
         }
         None => {
@@ -206,15 +240,32 @@ fn bridge_plugin() -> RewriteBridgePlugin {
     })
 }
 
-fn run_shots(config: Config, out: PathBuf, only: Option<String>) {
+fn run_shots(config: Config, out: PathBuf, only: Option<String>, options: shots::ShotOptions) {
     let mut app = App::new();
     offscreen::add_plugins(&mut app);
     stage::add_resources(&mut app);
     app.add_plugins(bridge_plugin())
         .insert_resource(gallery::Gallery::new(config))
-        .insert_resource(shots::ShotRun::new(out, only))
+        .insert_resource(shots::ShotRun::new(out, only, options))
+        .insert_resource(options)
         .add_systems(Startup, (stage::spawn_stage, shots::setup))
-        .add_systems(Update, shots::step)
+        .add_systems(Update, (shots::step, shots::unlit_pass))
+        .run();
+}
+
+/// The physics scenes alone: no camera, no lights, no window; one physics step per frame of 1/60 s
+fn run_physics(config: Config, out: PathBuf, seconds: f32) {
+    let mut app = App::new();
+    offscreen::add_plugins(&mut app);
+    app.insert_resource(Time::<Fixed>::from_duration(offscreen::FRAME));
+    app.add_plugins((bridge_plugin(), physics::plugins()))
+        .insert_resource(gallery::Gallery::new(config))
+        .insert_resource(restpose::RestRun::new(out, seconds))
+        .add_systems(Startup, physics::setup_ground)
+        .add_systems(
+            Update,
+            (gallery::pump, capture::physics_time, restpose::step).chain(),
+        )
         .run();
 }
 

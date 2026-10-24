@@ -71,6 +71,8 @@ cargo run --release                             # the gallery (bridge-testbed --
 cargo run --release -- list --provider hytale --filter Trork --limit 10   # find ids for the config
 cargo run --release -- inspect                  # the numbers of every item as text, no rendering
 cargo run --release -- shots --out shots/a      # 512 x 512 shots + manifest.json
+cargo run --release -- shots --out shots/s --no-ground --unlit   # silhouettes: RGBA, base colour only
+cargo run --release -- physics --out rest.json  # every dynamic body's rest pose, as JSON
 cargo run --release -- compare --base shots/a --new shots/b
 ```
 
@@ -175,6 +177,21 @@ here is a testbed assumption**; the panel says so on screen.
 - **Space** drops the selected prop with its lowest point 3 m above the ground (`drop_height`). **B** spawns a pyramid
   of the `[stack]` block (6 Hytale blocks, 3 + 2 + 1). **R** puts every prop back and removes the stack.
 
+### Rest poses (`physics --out FILE`)
+
+`bridge-testbed physics --out rest.json [--seconds 6]` runs the same scenes as the Space and B keys without a window and
+without a person, and writes where every body ends up, so that another implementation of the same scenes can be compared
+with it. Each `dynamic = true` item that has a convex hull is dropped alone (its lowest point `drop_height` above the
+ground, as Space does) and the world runs for `--seconds` (default 6); then everything is put back and the `[stack]`
+pyramid is built and run for the same time. The file holds the settings (`step_s`, `gravity_m_s2`, `density_kg_m3`,
+`drop_height_m`) and, per scene (`drop` or `stack`), per body: `position` (the body's own origin, metres), `rotation` (a unit
+quaternion `[x, y, z, w]`, `w >= 0`), `sleeping`, `speed_m_s` (about zero at rest) and, for a drop, `start_position`. Stack
+blocks are `stack block 0..N` in the order the pyramid is built (bottom layer first, left to right).
+
+It is deterministic: every frame is one physics step of exactly 1/60 s (a fixed step, not the gallery's real-time 64 Hz),
+time is stepped by hand, and the same config on the same machine gives a byte-identical file (checked by running it twice).
+It needs a GPU to load the models, not a screen. Every number is a testbed assumption (see above).
+
 ## Shots and compare
 
 `bridge-testbed shots --out DIR` renders each item alone with no window (Bevy's offscreen path: no primary window and no
@@ -188,6 +205,16 @@ warnings). Time is stepped by hand, so the same config on the same machine gives
 differs when a channel differs by more than `--tolerance` of 255; an item regresses when more than `--threshold` of its
 pixels differ), compares the manifests' numbers (AABB, vertices, triangles, clips), prints a table, writes diff images to
 `NEW/diff/` and exits nonzero on regressions (also for an item that went missing or began to fail).
+
+For a reference comparison, two flags change what a shot shows (both are recorded in `manifest.json`, and `compare` says when
+the two folders were taken with different flags):
+
+- `--no-ground`: no ground plane, so the item floats on the background and nothing but the item is in the picture.
+- `--unlit`: base colour only, for cutting out a silhouette. Every material is drawn unlit (its base colour times its
+  texture and vertex colours; no lights, shadows, emissive or normal maps), there is no sun, no tonemapping or dithering and no
+  anti-aliasing, a scene's own sky is dropped, and the background is **transparent**: the PNGs are RGBA, and every pixel's alpha
+  is 0 or 255, so `alpha > 0` is the silhouette. (A translucent material keeps its own alpha.) Combine it with `--no-ground`
+  for a clean cut-out; alone it keeps the ground, which then is part of the silhouette. The camera is the same as without the flags.
 
 Shots are game content: they are never committed (`.gitignore` covers them).
 
@@ -240,7 +267,7 @@ extracted): listing 194 stairs took about 75 MB resident, and four blocks and it
 
 ## Tests
 
-`cargo test` needs no game data: config parsing, the measurements, the shot camera, the PNG diff and the loader (against a
+`cargo test` needs no game data: config parsing, the shot flags and the rest-pose file's details, the measurements, the shot camera, the PNG diff and the loader (against a
 synthetic provider: models, clips, scenes with asset references, failures).
 `cargo clippy --all-targets -- -D warnings` and `cargo fmt --check` pass.
 

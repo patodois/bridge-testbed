@@ -58,8 +58,16 @@ pub fn spawn_stage(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    shot: Option<Res<crate::shots::ShotOptions>>,
 ) {
-    commands.spawn(sun());
+    let shot = shot.as_deref().copied().unwrap_or_default();
+    // Unlit pictures need no sun, and its shadows would only cost time
+    if !shot.unlit {
+        commands.spawn(sun());
+    }
+    if shot.no_ground {
+        return;
+    }
     commands.spawn((
         Name::new("ground"),
         Mesh3d(meshes.add(Plane3d::default().mesh().size(GROUND_SIZE, GROUND_SIZE))),

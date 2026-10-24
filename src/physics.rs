@@ -22,8 +22,9 @@ pub const STACK_AT: [f32; 2] = [0.0, 4.0];
 /// Gap between the ground, or a layer, and the block above at the start, metres (testbed choice)
 const STACK_GAP: f32 = 0.02;
 
+/// A block of the stack, with its number in the order the stack spawns them (layer by layer, left to right)
 #[derive(Component)]
-pub struct StackBody;
+pub struct StackBody(pub usize);
 
 /// A rigid body made from a flagged item
 #[derive(Component)]
@@ -176,7 +177,7 @@ pub fn spawn_stack(gallery: &Gallery, bridge: &mut Bridge) {
                     RigidBody::Dynamic,
                     collider,
                     ColliderDensity(gallery.config.physics.density),
-                    StackBody,
+                    StackBody(placed),
                 ));
             }
             placed += 1;
