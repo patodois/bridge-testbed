@@ -18,7 +18,7 @@ env:
   CARGO_TERM_COLOR: always
   BIN: bridge-testbed
   CARGO_ARGS: -p bridge-testbed
-  PKG_GAME: copies of the games it loads (Hytale, Nocturne, War Thunder, Warframe)
+  PKG_GAME: copies of the games it loads (Hytale, Minecraft: Java Edition, Nocturne, War Thunder, Warframe)
   PKG_EXTRA: testbed.example.toml
 
 jobs:
@@ -124,6 +124,8 @@ jobs:
           cat > notes.md <<'NOTES'
           Prebuilt `bridge-testbed` for macOS (Apple silicon and Intel), Linux and Windows (x86_64). The archives contain
           no game data: the program reads the files of a copy of the game that you already have.
+
+          NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
 
           The programs are not code-signed. macOS (Gatekeeper) and Windows (SmartScreen) may warn the
           first time; the INSTALL.txt in each archive and the README say what to do. Check a download

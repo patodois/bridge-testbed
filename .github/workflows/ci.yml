@@ -32,7 +32,7 @@ jobs:
           key: testbed-${{ matrix.os }}-${{ hashFiles('Cargo.lock') }}
           restore-keys: testbed-${{ matrix.os }}-
       - run: cargo fmt --check
-      # Every provider feature (wt, wf, hytale, nocturne), all from public git revisions
+      # Every provider feature (wt, wf, hytale, nocturne, mc), from public git revisions and crates.io
       - run: cargo build --locked
       - run: cargo clippy --locked --all-targets -- -D warnings
       - run: cargo test --locked

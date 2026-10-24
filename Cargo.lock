@@ -1909,6 +1909,7 @@ dependencies = [
  "clap",
  "hytale-unpack",
  "libc",
+ "mc-unpack",
  "nocturne-unpack",
  "png",
  "rewrite-bridge",
@@ -3700,6 +3701,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d1525a2a28c7f4fa0fc98bb91ae755d1e2d1505079e05539e35bc876b5d65ae9"
 dependencies = [
  "regex-automata",
+]
+
+[[package]]
+name = "mc-unpack"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "12541c6841345a08be7f82800f707a514c93264c9eb4c15ac995a125d89d899a"
+dependencies = [
+ "anyhow",
+ "clap",
+ "libc",
+ "png",
+ "rewrite-bridge",
+ "serde",
+ "serde_json",
+ "zip",
 ]
 
 [[package]]

@@ -199,9 +199,10 @@ pub fn load_item(providers: &ProviderSet, item: &ItemConfig) -> Result<Loaded, S
             }
         }
     };
-    if item.provider == "nocturne" && (item.dynamic || item.collide || item.kind == ItemKind::Scene)
-    {
-        let n = "Nocturne has no collision data in the bridge";
+    if let (Some(n), true) = (
+        no_collision_note(&item.provider),
+        item.dynamic || item.collide || item.kind == ItemKind::Scene,
+    ) {
         loaded.collision.note = Some(match loaded.collision.note.take() {
             Some(x) => format!("{x}; {n}"),
             None => n.to_string(),
@@ -244,6 +245,16 @@ pub fn load_item(providers: &ProviderSet, item: &ItemConfig) -> Result<Loaded, S
     loaded.warnings = warnings;
     loaded.seconds = started.elapsed().as_secs_f32();
     Ok(loaded)
+}
+
+/// Providers whose bridge carries no collision data: the static collider of their items is a trimesh of the
+/// render meshes (a testbed assumption), and the panel says so
+fn no_collision_note(provider: &str) -> Option<&'static str> {
+    match provider {
+        "nocturne" => Some("Nocturne has no collision data in the bridge"),
+        "mc" => Some("Minecraft has no collision data in this provider (block shapes are in the game's code)"),
+        _ => None,
+    }
 }
 
 /// Turns a scene's asset references into inline models, loading each distinct reference once (a
@@ -496,6 +507,18 @@ mod tests {
         let mut other = item(ItemKind::Model, "crate", false);
         other.provider = "hytale".into();
         assert!(missing(load_item(&s, &other)).contains("no [providers.hytale]"));
+    }
+
+    #[test]
+    fn providers_without_collision_data_say_so() {
+        assert!(no_collision_note("nocturne")
+            .unwrap()
+            .contains("no collision data"));
+        assert!(no_collision_note("mc")
+            .unwrap()
+            .contains("no collision data"));
+        assert!(no_collision_note("hytale").is_none());
+        assert!(no_collision_note("wt").is_none());
     }
 
     #[test]

@@ -14,6 +14,10 @@ the camera and every physics value.
 It needs the owner's own game installs and a `testbed.toml` that points at them. CI builds and lints it; it has no
 game data and does not run it.
 
+**NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.** The `mc` provider reads the
+block and item models of a Minecraft: Java Edition client jar that you already own, through
+[mc-unpack](https://github.com/patodois/mc-unpack). This project contains no Mojang code and no Mojang assets.
+
 ## Download
 
 Programs built for each release are on the [Releases page](https://github.com/patodois/bridge-testbed/releases). Pick the archive for your system:
@@ -27,7 +31,7 @@ Programs built for each release are on the [Releases page](https://github.com/pa
 
 Each archive holds the program, this README, both license files and an `INSTALL.txt`. `SHA256SUMS` on the release page has
 the checksum of every archive (`shasum -a 256 -c SHA256SUMS` on macOS, `sha256sum -c SHA256SUMS` on Linux,
-`Get-FileHash` on Windows). They are built with all four providers (Hytale, Nocturne, War Thunder, Warframe) and include `testbed.example.toml`. The author runs the testbed on macOS; the Linux and Windows builds are made by the release workflow but have not been tried by hand. It needs a GPU with Metal, Vulkan or DirectX 12 support.
+`Get-FileHash` on Windows). They are built with all five providers (Hytale, Minecraft: Java Edition, Nocturne, War Thunder, Warframe) and include `testbed.example.toml`. The author runs the testbed on macOS; the Linux and Windows builds are made by the release workflow but have not been tried by hand. It needs a GPU with Metal, Vulkan or DirectX 12 support.
 
 **The binaries contain no game data.** They are the program only; it reads the files of copies of the games it loads that you already have
 installed.
@@ -46,7 +50,7 @@ To build it yourself instead, see [Try first](#try-first-no-window).
 
 You need Rust (the stable toolchain from [rustup.rs](https://rustup.rs)), `git`, and at least one of the games installed
 (see [Config](#config) for where each keeps its files). **The first build takes about 6 minutes** on an M-series Mac
-(Bevy and four game readers are compiled with optimisations) and a Bevy target folder is about 3 GB; later builds take
+(Bevy and five game readers are compiled with optimisations) and a Bevy target folder is about 3 GB; later builds take
 seconds. Start it on its own, then try the commands that open no window:
 
 ```sh
@@ -80,7 +84,7 @@ a terminal too.
 
 `testbed.toml` (see [`testbed.example.toml`](testbed.example.toml) for every key):
 
-- `[providers.wt|wf|hytale|nocturne]`: the game's install, as `path`. A provider is opened when its first item loads. One
+- `[providers.wt|wf|hytale|nocturne|mc]`: the game's install, as `path`. A provider is opened when its first item loads. One
   that fails to open puts its error at the slots of its items; nothing crashes. `wf` has `max_texture` to keep a scene small.
 
   | provider | `path` | where it is |
@@ -89,6 +93,7 @@ a terminal too.
   | `wf` | Warframe's `Cache.Windows` folder | the one that holds the `.toc` and `.cache` pairs (`H.Texture.toc`, ...); Warframe's Windows files, copied to your Mac if you play there (see [wf-unpack](https://github.com/patodois/wf-unpack)) |
   | `hytale` | Hytale's `Assets.zip` | **optional**: leave `path` out to use the launcher's install on macOS (`~/Library/Application Support/Hytale/install/release/package/game/latest/Assets.zip`); set it for any other location |
   | `nocturne` | the game folder that holds `smt3hd_Data` | wherever you installed it; [nocturne-unpack](https://github.com/patodois/nocturne-unpack) says how to get the Windows build onto a Mac or Linux machine |
+  | `mc` | a Minecraft: Java Edition **client jar** | **optional**: leave `path` out to use the newest jar a launcher installed that mc-unpack can read (1.12.2 to 26.3). Prism Launcher, macOS: `~/Library/Application Support/PrismLauncher/libraries/com/mojang/minecraft/<v>/minecraft-<v>-client.jar`; the vanilla launcher keeps it at `versions/<v>/<v>.jar` under `~/Library/Application Support/minecraft` (macOS), `~/.minecraft` (Linux) or `%APPDATA%\.minecraft` (Windows). Set `path` to pin one version or for any other place. A modded profile's jar holds no assets and is refused |
 
   A leading `~` or `~/` in a `path` is your home folder (`$HOME`, on Windows `%USERPROFILE%`), so `path = "~/Games/smt3hd"`
   works; `~other` is not expanded. Other relative paths are relative to where you run the program.
@@ -160,9 +165,11 @@ here is a testbed assumption**; the panel says so on screen.
     the object's own collision resource (`load_level_collision`: triangle meshes, convex hulls and boxes as one static
     trimesh, tree trunks as capsule colliders). A `collide = true` model item tries `load_object_collision` for its
     model name (or `collision_id`); vehicles have none, and the panel says so.
-  - Everything else (Hytale, Nocturne, and a model or scene the provider has no collision for) gets a **static trimesh of
-    the render meshes**, which is a testbed assumption and is labelled "not game collision". **Nocturne has no collision
-    data in the bridge**; its panel says so.
+  - Everything else (Hytale, Nocturne, Minecraft, and a model or scene the provider has no collision for) gets a **static
+    trimesh of the render meshes**, which is a testbed assumption and is labelled "not game collision". **Nocturne has no
+    collision data in the bridge**, and **Minecraft has none in this provider** (a block's collision shape is in the
+    game's code, not in the jar's models, and nothing is invented); their panels say so. A Minecraft block is therefore
+    a trimesh of its model: a full cube is a 1 m box, a stair is its drawn boxes.
 - Items with `dynamic = true` are **convex-hull rigid bodies** of the model at rest (assumption). Mass is **1 kg per m³
   of hull volume** by default (assumption, `[physics] density`). They wait, switched off, at their slot until dropped.
 - **Space** drops the selected prop with its lowest point 3 m above the ground (`drop_height`). **B** spawns a pyramid
@@ -204,14 +211,15 @@ The commands are listed in `src/capture.rs`.
 | `wf` | [wf-unpack](https://github.com/patodois/wf-unpack) `e3ec925` | models, animated ids, level scenes and `?collision` scenes |
 | `hytale` | [hytale-unpack](https://github.com/patodois/hytale-unpack) `dbc7cbe` | entity models with clips, blocks, prefabs |
 | `nocturne` | [nocturne-unpack](https://github.com/patodois/nocturne-unpack) `49df6cc` | demons with the clips of their animator, field prefabs as scenes; no collision data |
+| `mc` | [mc-unpack](https://github.com/patodois/mc-unpack) `0.1.0` (crates.io) | Minecraft: Java Edition 1.12.2 to 26.3, from the client jar: blocks (`block/stone`, `block/oak_stairs?variant=facing=east,half=bottom,shape=straight`) and items (`item/diamond_sword`), 1 block = 1 m, `Prop` only; no entities, no animation, no collision data. Its textures are filtered nearest in glTF, but the bridge's `Material` has no sampler, so the testbed shows them linearly filtered (blurred pixel art) |
 
-Each is behind a cargo feature (`wt`, `wf`, `hytale`, `nocturne`, all on by default). A provider that is not configured,
+Each is behind a cargo feature (`wt`, `wf`, `hytale`, `nocturne`, `mc`, all on by default). A provider that is not configured,
 or whose game is not installed, shows an error label at its items' slots and nothing else.
 
 ### Dependencies
 
-Every dependency is a public crate or a public git revision; there is nothing to patch locally. `rewrite-bridge` and
-`rewrite-bridge-bevy` come from [crates.io](https://crates.io/crates/rewrite-bridge) (`0.2.1`), and all four providers ask
+Every dependency is a public crate or a public git revision; there is nothing to patch locally. `mc-unpack` is taken from crates.io (`0.1.0`). `rewrite-bridge` and
+`rewrite-bridge-bevy` come from [crates.io](https://crates.io/crates/rewrite-bridge) (`0.2.1`), and all five providers ask
 crates.io for `rewrite-bridge` `0.2.1` too, so Cargo builds one copy: `cargo tree -i rewrite-bridge` prints a single
 `rewrite-bridge v0.2.1` whose children are the testbed, the providers and `rewrite-bridge-bevy`, and
 `grep -c 'name = "rewrite-bridge"' Cargo.lock` prints 1. Move the providers' revisions
@@ -227,7 +235,8 @@ Items load one at a time and models are moved into Bevy's assets, which drop the
 example config (a Sherman, Excalibur with six clips, the Trork with 204, a Hytale block and a small prefab, a Nocturne
 demon with five clips and a field prefab) the gallery peaks at about 1.65 GB resident (2.35 GB footprint, which counts
 Metal's allocations); `shots` peaks at 1.4 GB. A War Thunder level with its collision (`arcade_norway_plain`) adds about
-0.5 GB resident. A Bevy target directory is about 3 GB for `cargo build` and as much again for `cargo clippy`.
+0.5 GB resident. The `mc` provider reads the client jar's zip directory and inflates single entries on demand (the jar is never
+extracted): listing 194 stairs took about 75 MB resident, and four blocks and items add almost nothing. A Bevy target directory is about 3 GB for `cargo build` and as much again for `cargo clippy`.
 
 ## Tests
 

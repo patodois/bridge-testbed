@@ -24,6 +24,7 @@ wt-unpack = { git = "https://github.com/patodois/wt-unpack", rev = "4915291663ef
 wf-unpack = { git = "https://github.com/patodois/wf-unpack", rev = "e3ec925fb82221b252a15fa5e1cd2e20cd8eef4c", features = ["bridge"], optional = true }
 hytale-unpack = { git = "https://github.com/patodois/hytale-unpack", rev = "dbc7cbee5560c857f84f0967f97a8986b2193d2e", optional = true }
 nocturne-unpack = { git = "https://github.com/patodois/nocturne-unpack", rev = "49df6cc0df8e1d60d9e0b1c6cc84473ee45d28e6", features = ["bridge"], optional = true }
+mc-unpack = { version = "0.1.0", features = ["bridge"], optional = true }
 libc = "0.2"
 
 [dependencies.bevy]
@@ -67,11 +68,12 @@ features = [
 ]
 
 [features]
-default = ["wt", "wf", "hytale", "nocturne"]
+default = ["wt", "wf", "hytale", "nocturne", "mc"]
 wt = ["dep:wt-unpack"]
 wf = ["dep:wf-unpack"]
 hytale = ["dep:hytale-unpack"]
 nocturne = ["dep:nocturne-unpack"]
+mc = ["dep:mc-unpack"]
 
 # Bevy and the game readers are far too slow without optimisations; keep our own code debuggable
 [profile.dev.package."*"]

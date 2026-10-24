@@ -27,7 +27,7 @@ fn expand_home_with(path: &Path, home: Option<&Path>) -> PathBuf {
 }
 
 /// Names a provider can have in `[providers.<name>]` and in an item's `provider`
-pub const PROVIDER_NAMES: [&str; 4] = ["wt", "wf", "hytale", "nocturne"];
+pub const PROVIDER_NAMES: [&str; 5] = ["wt", "wf", "hytale", "nocturne", "mc"];
 
 #[derive(Debug, Clone, Deserialize, Default)]
 #[serde(deny_unknown_fields)]
@@ -48,7 +48,8 @@ pub struct Config {
 #[serde(deny_unknown_fields)]
 pub struct ProviderConfig {
     /// The game's install: `game` folder (wt), `Cache.Windows` (wf), `Assets.zip` (hytale, optional:
-    /// the launcher's install is the default). A leading `~/` is the home folder.
+    /// the launcher's install is the default), the client jar (mc, optional: the newest one a launcher
+    /// installed is the default). A leading `~/` is the home folder.
     pub path: Option<PathBuf>,
     /// Largest side of a baked texture (wf). Keeps big scenes small; absent means full size.
     #[cfg_attr(not(feature = "wf"), allow(dead_code))]
@@ -220,6 +221,16 @@ mod tests {
         let c = Config::parse(include_str!("../testbed.example.toml")).unwrap();
         assert!(!c.items.is_empty());
         assert!(c.providers.contains_key("wt"));
+    }
+
+    #[test]
+    fn mc_is_a_provider_and_its_path_is_optional() {
+        let c = Config::parse(
+            "[providers.mc]\n[[items]]\nprovider='mc'\nid='block/stone'\nlabel='Stone'\n",
+        )
+        .unwrap();
+        assert!(c.providers["mc"].path.is_none());
+        assert_eq!(c.items[0].provider, "mc");
     }
 
     #[test]

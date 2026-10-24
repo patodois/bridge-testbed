@@ -4,7 +4,7 @@
 #   bridge-testbed shots --out shots/a          # fixed 512 x 512 shots of every item
 #   bridge-testbed list --provider hytale --filter Trork --limit 10   # find ids for the items below
 
-# Provider names are fixed: wt, wf, hytale, nocturne. A leading ~ in a path is your home folder.
+# Provider names are fixed: wt, wf, hytale, nocturne, mc. A leading ~ in a path is your home folder.
 # For one game only, keep its section and its [[items]] and delete the rest (see README.md).
 [providers.wt]
 # War Thunder's game folder. On macOS:
@@ -25,6 +25,16 @@ max_texture = 512
 [providers.nocturne]
 # The game folder that holds smt3hd_Data
 path = "~/Games/smt3hd"
+
+# NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
+# Minecraft: Java Edition (mc-unpack), read from the client jar of a copy you own. Versions 1.12.2 to 26.3.
+# Optional: without `path` the newest jar a launcher installed that mc-unpack can read is used. Where launchers keep it:
+#   Prism Launcher, macOS: ~/Library/Application Support/PrismLauncher/libraries/com/mojang/minecraft/<v>/minecraft-<v>-client.jar
+#   vanilla launcher, macOS: ~/Library/Application Support/minecraft/versions/<v>/<v>.jar
+#   vanilla launcher, Linux: ~/.minecraft/versions/<v>/<v>.jar    Windows: %APPDATA%\.minecraft\versions\<v>\<v>.jar
+# Set `path` to pin one version (the jar itself, not the folder). Uncomment this section and the items at the end.
+# [providers.mc]
+# path = "~/Library/Application Support/PrismLauncher/libraries/com/mojang/minecraft/26.3/minecraft-26.3-client.jar"
 
 [gallery]
 columns = 4          # items per row; 0 = one row
@@ -95,3 +105,32 @@ provider = "nocturne"
 id = "f014/f014_012"
 kind = "scene"
 label = "Field"
+
+# Minecraft: Java Edition, uncomment with [providers.mc] above. 1 block = 1 m, so block/stone is a 1 x 1 x 1 m cube like the
+# reference cube; a block has no front of its own, its `?variant=` state decides. `mc-unpack list` (or `bridge-testbed list
+# --provider mc --filter stairs`) prints the ids. There is no collision data in this provider, so `dynamic` and `collide`
+# use a trimesh/hull of the render meshes (a testbed assumption).
+# [[items]]
+# provider = "mc"
+# id = "block/stone"
+# kind = "model"
+# label = "Stone"
+# dynamic = true
+#
+# [[items]]
+# provider = "mc"
+# id = "block/grass_block"
+# kind = "model"
+# label = "Grass block"
+#
+# [[items]]
+# provider = "mc"
+# id = "block/oak_stairs?variant=facing=east,half=bottom,shape=straight"
+# kind = "model"
+# label = "Oak stairs"
+#
+# [[items]]
+# provider = "mc"
+# id = "item/diamond_sword"
+# kind = "model"
+# label = "Diamond sword"

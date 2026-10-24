@@ -112,7 +112,7 @@ pub struct PhysicsNote;
 pub const PHYSICS_NOTE: &str = "PHYSICS: the bridge carries no physics data yet, so masses, gravity, friction and restitution are testbed assumptions. \
 Avian 0.8; gravity 9.81 m/s2; mass = density x hull volume (1 kg per m3 by default); friction and restitution are Avian's defaults; \
 dynamic props are convex hulls of the render mesh at rest. Static colliders are the game's own collision shapes where the provider \
-offers them outside the bridge (Warframe, War Thunder) and otherwise a trimesh of the render meshes (an assumption: Hytale, Nocturne).";
+offers them outside the bridge (Warframe, War Thunder) and otherwise a trimesh of the render meshes (an assumption: Hytale, Nocturne, Minecraft).";
 
 pub fn spawn_hud(mut commands: Commands) {
     commands.spawn((

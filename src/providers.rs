@@ -138,6 +138,11 @@ fn open(name: &str, config: &ProviderConfig) -> anyhow::Result<Opened> {
                 nocturne_unpack::bridge::Nocturne::open(&path)?,
             )))
         }
+        #[cfg(feature = "mc")]
+        "mc" => Ok(Opened::plain(Arc::new(match &config.path {
+            Some(p) => mc_unpack::bridge::Minecraft::open(p)?,
+            None => mc_unpack::bridge::Minecraft::open_default()?,
+        }))),
         other => anyhow::bail!("this build has no `{other}` provider (cargo feature `{other}`)"),
     }
 }
