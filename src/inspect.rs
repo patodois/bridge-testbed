@@ -69,6 +69,9 @@ pub fn run(config: &Config, only: Option<&str>, max_clips: usize) -> Result<()> 
             "   {} nodes, {} meshes ({} skinned), {} materials, {} vertices, {} triangles, {} placements, {:.1} MB images",
             s.nodes, s.meshes, s.skinned_meshes, s.materials, s.vertices, s.triangles, s.instances, s.image_megabytes
         );
+        if let Some(sky) = &s.sky {
+            println!("   sky (the provider's, not drawn by the testbed): {sky}");
+        }
         println!(
             "   albedo {:?}, metallic {:?}, roughness {:?}, max emissive {:.2}, flipped {}/{}, double-sided materials {}, blended {}",
             s.mean_albedo, s.mean_metallic, s.mean_roughness, s.max_emissive, s.flipped_triangles,

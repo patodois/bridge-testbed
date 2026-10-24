@@ -108,6 +108,8 @@ pub struct Stats {
     pub stray_placements: usize,
     /// Scene models with vertices beyond [`MAX_PLACEMENT_M`] (provider data gone wrong), left out of the bounds
     pub stray_models: Vec<String>,
+    /// Scenes: what the provider says about the sky (`None` for a model); the testbed never draws it
+    pub sky: Option<String>,
 }
 
 impl Stats {
@@ -264,10 +266,31 @@ pub fn instance_matrix(t: &rb::Transform) -> Mat4 {
     )
 }
 
+/// A scene's `environment` in words: it is the provider's sky, not something the testbed draws
+fn describe_environment(environment: Option<&rb::Environment>) -> String {
+    match environment {
+        None => "none".to_string(),
+        Some(rb::Environment::Color([r, g, b])) => {
+            format!("flat colour (linear {r:.3} {g:.3} {b:.3})")
+        }
+        Some(rb::Environment::Equirectangular { image, intensity }) => {
+            format!(
+                "equirectangular picture {} x {}, intensity {intensity}",
+                image.width, image.height
+            )
+        }
+        // `Environment` is non-exhaustive
+        Some(_) => "a kind this testbed does not know".to_string(),
+    }
+}
+
 /// Stats and bounds of a scene whose models are all inline (asset references that did not load
 /// count nothing). `None` bounds when no instance has geometry.
 pub fn scene_stats(scene: &rb::Scene) -> (Stats, Option<Aabb>) {
-    let mut s = Stats::default();
+    let mut s = Stats {
+        sky: Some(describe_environment(scene.environment.as_ref())),
+        ..Stats::default()
+    };
     let mut uses = vec![0usize; scene.models.len()];
     for i in &scene.instances {
         if let Some(u) = uses.get_mut(i.model) {
