@@ -11,6 +11,34 @@ the camera and every physics value.
 It needs the owner's own game installs and a `testbed.toml` that points at them. CI builds and lints it; it has no
 game data and does not run it.
 
+## Download
+
+Programs built for each release are on the [Releases page](https://github.com/patodois/bridge-testbed/releases). Pick the archive for your system:
+
+| System | Archive |
+|--------|---------|
+| macOS, Apple silicon | `bridge-testbed-<tag>-macos-arm64.tar.gz` |
+| macOS, Intel | `bridge-testbed-<tag>-macos-x86_64.tar.gz` |
+| Linux, x86_64 (glibc 2.35 or newer) | `bridge-testbed-<tag>-linux-x86_64.tar.gz` |
+| Windows, x86_64 | `bridge-testbed-<tag>-windows-x86_64.zip` |
+
+Each archive holds the program, this README, both license files and an `INSTALL.txt`. `SHA256SUMS` on the release page has
+the checksum of every archive (`shasum -a 256 -c SHA256SUMS` on macOS, `sha256sum -c SHA256SUMS` on Linux,
+`Get-FileHash` on Windows). They are built with all four providers (Hytale, Nocturne, War Thunder, Warframe) and include `testbed.example.toml`. The author runs the testbed on macOS; the Linux and Windows builds are made by the release workflow but have not been tried by hand. It needs a GPU with Metal, Vulkan or DirectX 12 support.
+
+**The binaries contain no game data.** They are the program only; it reads the files of copies of the games it loads that you already have
+installed.
+
+They are not code-signed, so the first run may be blocked:
+
+- **macOS (Gatekeeper)**: a file downloaded in a browser is quarantined, and macOS refuses to open it ("Apple could not
+  verify ..."). Remove the mark once, from the folder you extracted to: `xattr -d com.apple.quarantine ./bridge-testbed`. Or open
+  System Settings > Privacy & Security and press "Open Anyway" after the first refusal.
+- **Windows (SmartScreen)**: "Windows protected your PC" appears the first time. Choose "More info", then "Run anyway". Or
+  right-click the downloaded `.zip`, open Properties and tick "Unblock" before you extract it.
+
+To build it yourself instead, see [Try first](#try-first-no-window).
+
 ## Try first (no window)
 
 You need Rust (the stable toolchain from [rustup.rs](https://rustup.rs)), `git`, and at least one of the games installed
