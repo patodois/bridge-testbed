@@ -18,7 +18,7 @@ env:
   CARGO_TERM_COLOR: always
   BIN: bridge-testbed
   CARGO_ARGS: -p bridge-testbed
-  PKG_GAME: copies of the games it loads (Hytale, Minecraft: Java Edition, Nocturne, War Thunder, Warframe)
+  PKG_GAME: "copies of the games it loads (Hytale, Minecraft: Java Edition, Nocturne, War Thunder, Warframe)"
   PKG_EXTRA: testbed.example.toml
 
 jobs:
