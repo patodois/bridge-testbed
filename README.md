@@ -18,6 +18,8 @@ game data and does not run it.
 block and item models of a Minecraft: Java Edition client jar that you already own, through
 [mc-unpack](https://github.com/patodois/mc-unpack). This project contains no Mojang code and no Mojang assets.
 
+**Adding a game?** Read the [guide to adding a game](https://github.com/patodois/rewrite-bridge/blob/main/docs/INTEGRATING.md), which covers host, guest and provider. The testbed has no passthrough link: use it to check a new provider's scale, orientation and animation next to the others.
+
 ## Download
 
 Programs built for each release are on the [Releases page](https://github.com/patodois/bridge-testbed/releases). Pick the archive for your system:
