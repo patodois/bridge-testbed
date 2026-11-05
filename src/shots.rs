@@ -315,52 +315,26 @@ pub fn step(
                     }
                 }
             }
-            match path {
-                None if n == SHOOT_AT => {
-                    let path = run
-                        .out
-                        .join(format!("{}.png", gallery.items[idx].cfg.label));
-                    // A PNG left by an earlier run is not this capture: remove it first, so that
-                    // the file existing later means this request wrote it
-                    if let Err(err) = invalidate_stale(&path) {
-                        let mut e = entry_for(&gallery, idx);
-                        e.status = "error".into();
-                        e.error = Some(format!(
-                            "cannot replace the earlier {}: {err}",
-                            path.display()
-                        ));
-                        run.manifest.items.push(e);
-                        run.state = State::Cleanup(0);
-                        return;
-                    }
-                    if run.unlit {
-                        offscreen::save_rgba(&mut bridge.commands, &target.0, path.clone());
-                    } else {
-                        offscreen::save(&mut bridge.commands, &target.0, path.clone());
-                    }
-                    State::Shoot(idx, n, Some(path))
+            let target_path = run
+                .out
+                .join(format!("{}.png", gallery.items[idx].cfg.label));
+            let unlit = run.unlit;
+            let outcome = advance_shot(n, path, &target_path, |p| {
+                if unlit {
+                    offscreen::save_rgba(&mut bridge.commands, &target.0, p.to_path_buf());
+                } else {
+                    offscreen::save(&mut bridge.commands, &target.0, p.to_path_buf());
                 }
-                Some(path) if path.exists() && n > SHOOT_AT + 4 => {
-                    let e = entry_for(&gallery, idx);
-                    info!("shot: {} saved", e.label);
-                    run.manifest.items.push(e);
-                    if let Some(root) = gallery.items[idx].root.take() {
-                        bridge.commands.entity(root).despawn();
-                    }
-                    State::Cleanup(0)
-                }
-                path => {
-                    if n > SHOOT_AT + 600 {
-                        // The file never appeared
-                        let mut e = entry_for(&gallery, idx);
-                        e.status = "error".into();
-                        e.error = Some("the PNG was not written".into());
-                        run.manifest.items.push(e);
-                        State::Cleanup(0)
-                    } else {
-                        State::Shoot(idx, n, path)
-                    }
-                }
+            });
+            match settle(
+                outcome,
+                entry_for(&gallery, idx),
+                &mut run.manifest.items,
+                &mut gallery.items[idx].root,
+                &mut bridge.commands,
+            ) {
+                Some(path) => State::Shoot(idx, n, path),
+                None => State::Cleanup(0),
             }
         }
         State::Cleanup(n) => {
@@ -392,6 +366,69 @@ pub fn step(
             State::Finished
         }
     };
+}
+
+/// What one frame of the Shoot state decided
+#[derive(Debug, PartialEq)]
+enum Shot {
+    /// Keep waiting, with the path of the capture once it was requested
+    Wait(Option<PathBuf>),
+    /// This request's PNG is on disk
+    Saved,
+    /// The shot cannot be taken or never landed
+    Failed(String),
+}
+
+/// One frame of the Shoot state at frame `n`: requests the capture at `SHOOT_AT` (through `request`,
+/// after removing any PNG an earlier run left at `target`, so that the file existing later means this
+/// request wrote it) and then waits for the file.
+fn advance_shot(n: u32, path: Option<PathBuf>, target: &Path, request: impl FnOnce(&Path)) -> Shot {
+    match path {
+        None if n == SHOOT_AT => {
+            if let Err(err) = invalidate_stale(target) {
+                return Shot::Failed(format!(
+                    "cannot replace the earlier {}: {err}",
+                    target.display()
+                ));
+            }
+            request(target);
+            Shot::Wait(Some(target.to_path_buf()))
+        }
+        Some(path) if path.exists() && n > SHOOT_AT + 4 => Shot::Saved,
+        path => {
+            if n > SHOOT_AT + 600 {
+                // The file never appeared
+                Shot::Failed("the PNG was not written".into())
+            } else {
+                Shot::Wait(path)
+            }
+        }
+    }
+}
+
+/// Applies what a frame of the Shoot state decided. `None` when the shot is over: its entry is in the
+/// manifest, as an error when it failed, and the model is gone from the scene either way, so that the
+/// next shot does not contain it. `Some(path)` to keep waiting.
+fn settle(
+    shot: Shot,
+    mut entry: Entry,
+    manifest: &mut Vec<Entry>,
+    root: &mut Option<Entity>,
+    commands: &mut Commands,
+) -> Option<Option<PathBuf>> {
+    match shot {
+        Shot::Wait(path) => return Some(path),
+        Shot::Saved => info!("shot: {} saved", entry.label),
+        Shot::Failed(why) => {
+            entry.status = "error".into();
+            entry.error = Some(why);
+        }
+    }
+    manifest.push(entry);
+    if let Some(root) = root.take() {
+        commands.entity(root).despawn();
+    }
+    None
 }
 
 /// Removes a file left at `path` by an earlier run. A missing file is fine.
@@ -442,5 +479,102 @@ mod tests {
         );
         assert!(run.manifest.no_ground && run.manifest.unlit);
         assert_eq!(run.manifest.lighting, UNLIT_NOTE);
+    }
+
+    fn scratch(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("testbed-{name}-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    /// Runs the state frame by frame the way `step` does, with a capture that writes nothing
+    fn run_state(target: &Path, write: Option<&[u8]>) -> (Shot, bool) {
+        let (mut path, mut asked) = (None, false);
+        for n in 1..=SHOOT_AT + 700 {
+            match advance_shot(n, path.take(), target, |p| {
+                asked = true;
+                if let Some(bytes) = write {
+                    std::fs::write(p, bytes).unwrap();
+                }
+            }) {
+                Shot::Wait(p) => path = p,
+                done => return (done, asked),
+            }
+        }
+        panic!("the state never finished");
+    }
+
+    #[test]
+    fn the_shoot_state_does_not_accept_a_png_from_an_earlier_run() {
+        let dir = scratch("wiring");
+        let target = dir.join("model.png");
+        std::fs::write(&target, b"old png").unwrap();
+        // The new capture never lands: the old file must not count as it
+        let (shot, asked) = run_state(&target, None);
+        assert!(asked);
+        assert_eq!(shot, Shot::Failed("the PNG was not written".into()));
+        // The new capture lands: that one is accepted
+        std::fs::write(&target, b"old png").unwrap();
+        let (shot, _) = run_state(&target, Some(b"new png"));
+        assert_eq!(shot, Shot::Saved);
+        assert_eq!(std::fs::read(&target).unwrap(), b"new png");
+        std::fs::remove_file(&target).unwrap();
+        std::fs::remove_dir(&dir).unwrap();
+    }
+
+    #[test]
+    fn a_finished_shot_takes_its_model_out_of_the_scene_whether_it_saved_or_failed() {
+        for shot in [Shot::Saved, Shot::Failed("the PNG was not written".into())] {
+            let mut world = World::new();
+            let root = world.spawn_empty().id();
+            let (mut manifest, mut slot) = (Vec::new(), Some(root));
+            let entry = Entry {
+                label: "m".into(),
+                status: "ok".into(),
+                ..Entry::default()
+            };
+            let failed = matches!(shot, Shot::Failed(_));
+            let mut commands = world.commands();
+            let left = settle(shot, entry, &mut manifest, &mut slot, &mut commands);
+            world.flush();
+            assert!(left.is_none());
+            assert!(
+                slot.is_none() && world.get_entity(root).is_err(),
+                "the model stayed in the scene"
+            );
+            assert_eq!(manifest.len(), 1);
+            assert_eq!(manifest[0].status == "error", failed);
+        }
+        // A shot still waiting touches nothing
+        let mut world = World::new();
+        let root = world.spawn_empty().id();
+        let (mut manifest, mut slot) = (Vec::new(), Some(root));
+        let mut commands = world.commands();
+        let left = settle(
+            Shot::Wait(None),
+            Entry::default(),
+            &mut manifest,
+            &mut slot,
+            &mut commands,
+        );
+        world.flush();
+        assert_eq!(left, Some(None));
+        assert!(slot.is_some() && manifest.is_empty() && world.get_entity(root).is_ok());
+    }
+
+    #[test]
+    fn a_file_that_cannot_be_replaced_is_a_failed_shot_and_asks_for_no_capture() {
+        let dir = scratch("unremovable");
+        // A directory at the target path cannot be removed as a file
+        let target = dir.join("model.png");
+        std::fs::create_dir(&target).unwrap();
+        let (shot, asked) = run_state(&target, None);
+        assert!(
+            matches!(&shot, Shot::Failed(m) if m.contains("cannot replace")),
+            "{shot:?}"
+        );
+        assert!(!asked);
+        std::fs::remove_dir(&target).unwrap();
+        std::fs::remove_dir(&dir).unwrap();
     }
 }
