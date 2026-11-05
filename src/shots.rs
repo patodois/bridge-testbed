@@ -2,7 +2,7 @@
 //! AABB, under the stage's fixed lighting, into `DIR/<label>.png` and `DIR/manifest.json`.
 //! The point is regression: the same config on the same machine must give the same pixels.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use bevy::camera::ClearColorConfig;
 use bevy::core_pipeline::tonemapping::{DebandDither, Tonemapping};
@@ -320,6 +320,19 @@ pub fn step(
                     let path = run
                         .out
                         .join(format!("{}.png", gallery.items[idx].cfg.label));
+                    // A PNG left by an earlier run is not this capture: remove it first, so that
+                    // the file existing later means this request wrote it
+                    if let Err(err) = invalidate_stale(&path) {
+                        let mut e = entry_for(&gallery, idx);
+                        e.status = "error".into();
+                        e.error = Some(format!(
+                            "cannot replace the earlier {}: {err}",
+                            path.display()
+                        ));
+                        run.manifest.items.push(e);
+                        run.state = State::Cleanup(0);
+                        return;
+                    }
                     if run.unlit {
                         offscreen::save_rgba(&mut bridge.commands, &target.0, path.clone());
                     } else {
@@ -381,9 +394,34 @@ pub fn step(
     };
 }
 
+/// Removes a file left at `path` by an earlier run. A missing file is fine.
+fn invalidate_stale(path: &Path) -> std::io::Result<()> {
+    match std::fs::remove_file(path) {
+        Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e),
+        _ => Ok(()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_png_from_an_earlier_run_is_not_this_capture() {
+        let dir = std::env::temp_dir().join(format!("testbed-stale-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("model.png");
+        std::fs::write(&path, b"\x89PNG old").unwrap();
+        invalidate_stale(&path).unwrap();
+        assert!(
+            !path.exists(),
+            "the old file would pass for the new capture"
+        );
+        // Nothing there is not an error
+        invalidate_stale(&path).unwrap();
+        std::fs::remove_file(dir.join("none")).ok();
+        std::fs::remove_dir(&dir).unwrap();
+    }
 
     #[test]
     fn a_manifest_from_before_the_flags_reads_as_lit_with_ground() {
