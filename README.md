@@ -247,21 +247,21 @@ The commands are listed in `src/capture.rs`.
 
 | name | crate | notes |
 |---|---|---|
-| `wt` | [wt-unpack](https://github.com/patodois/wt-unpack) `0.2.0` (`f9f0515`) | vehicles; `load_scene` for levels (a whole map is heavy, about 1.2 GB for Berlin, so none is in the default config); the game's collision of objects and levels |
-| `wf` | [wf-unpack](https://github.com/patodois/wf-unpack) `0.2.0` (`5db618f`) | models, animated ids, level scenes and `?collision` scenes. A level has **no sky by default** (`scene.environment` is `None`; `inspect` prints a `sky` line for every scene). wf-unpack's `SceneOptions::lighting_environment` is opt-in and captures the level's lighting, which is not the drawn sky; the testbed leaves it off, and in any case never applies a scene's sky |
-| `hytale` | [hytale-unpack](https://github.com/patodois/hytale-unpack) `0.2.0` (`889a70f`) | entity models with clips, blocks, prefabs. An entity wears its default attachments (hats, hair, eyes, clothes), merged into the body's nodes, so a character is no longer bare |
-| `nocturne` | [nocturne-unpack](https://github.com/patodois/nocturne-unpack) `49df6cc` | demons with the clips of their animator, field prefabs as scenes; no collision data |
-| `mc` | [mc-unpack](https://github.com/patodois/mc-unpack) `0.1.0` (crates.io) | Minecraft: Java Edition 1.12.2 to 26.3, from the client jar: blocks (`block/stone`, `block/oak_stairs?variant=facing=east,half=bottom,shape=straight`) and items (`item/diamond_sword`), 1 block = 1 m, `Prop` only; no entities, no animation, no collision data. Its textures are filtered nearest in glTF, but the bridge's `Material` has no sampler, so the testbed shows them linearly filtered (blurred pixel art) |
+| `wt` | [wt-unpack](https://github.com/patodois/wt-unpack) `0.3.0` (`c06c71c`) | vehicles; `load_scene` for levels (a whole map is heavy, about 1.2 GB for Berlin, so none is in the default config); the game's collision of objects and levels |
+| `wf` | [wf-unpack](https://github.com/patodois/wf-unpack) `0.3.1` (`c482a56`) | models, animated ids, level scenes and `?collision` scenes. A level has **no sky by default** (`scene.environment` is `None`; `inspect` prints a `sky` line for every scene). wf-unpack's `SceneOptions::lighting_environment` is opt-in and captures the level's lighting, which is not the drawn sky; the testbed leaves it off, and in any case never applies a scene's sky |
+| `hytale` | [hytale-unpack](https://github.com/patodois/hytale-unpack) `0.2.1` (`c29e8db`) | entity models with clips, blocks, prefabs. An entity wears its default attachments (hats, hair, eyes, clothes), merged into the body's nodes, so a character is no longer bare |
+| `nocturne` | [nocturne-unpack](https://github.com/patodois/nocturne-unpack) `0.2.0` (`355d578`) | demons with the clips of their animator, field prefabs as scenes; no collision data |
+| `mc` | [mc-unpack](https://github.com/patodois/mc-unpack) `0.3.0` (`43ef7ef`) | Minecraft: Java Edition 1.12.2 to 26.3, from the client jar: blocks (`block/stone`, `block/oak_stairs?variant=facing=east,half=bottom,shape=straight`) and items (`item/diamond_sword`), 1 block = 1 m, `Prop` only; no entities, no animation, no collision data. Its textures are filtered nearest in glTF, but the bridge's `Material` has no sampler, so the testbed shows them linearly filtered (blurred pixel art) |
 
 Each is behind a cargo feature (`wt`, `wf`, `hytale`, `nocturne`, `mc`, all on by default). A provider that is not configured,
 or whose game is not installed, shows an error label at its items' slots and nothing else.
 
 ### Dependencies
 
-Every dependency is a public crate or a public git revision; there is nothing to patch locally. `mc-unpack` is taken from crates.io (`0.1.0`). `rewrite-bridge` and
-`rewrite-bridge-bevy` come from [crates.io](https://crates.io/crates/rewrite-bridge) (`0.2.2`), and all five providers ask
-crates.io for `rewrite-bridge` `0.2` (`^0.2.1`) too, so Cargo builds one copy: `cargo tree -i rewrite-bridge` prints a single
-`rewrite-bridge v0.2.2` whose children are the testbed, the providers and `rewrite-bridge-bevy`, and
+Every dependency is a public crate or a public git revision; there is nothing to patch locally. `rewrite-bridge` (`0.3.1`) and
+`rewrite-bridge-bevy` (`0.3.0`) come from [crates.io](https://crates.io/crates/rewrite-bridge), and all five providers ask
+crates.io for `rewrite-bridge` `0.3` (`^0.3.1`) too, so Cargo builds one copy: `cargo tree -i rewrite-bridge` prints a single
+`rewrite-bridge v0.3.1` whose children are the testbed, the providers and `rewrite-bridge-bevy`, and
 `grep -c 'name = "rewrite-bridge"' Cargo.lock` prints 1. Move the providers' revisions
 together, and keep them on the same `0.x` line of rewrite-bridge as the two lines above: a provider on another line would
 be a second copy.
