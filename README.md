@@ -258,10 +258,10 @@ or whose game is not installed, shows an error label at its items' slots and not
 
 ### Dependencies
 
-Every dependency is a public crate or a public git revision; there is nothing to patch locally. `rewrite-bridge` (`0.3.1`) and
-`rewrite-bridge-bevy` (`0.3.0`) come from [crates.io](https://crates.io/crates/rewrite-bridge), and all five providers ask
-crates.io for `rewrite-bridge` `0.3` (`^0.3.1`) too, so Cargo builds one copy: `cargo tree -i rewrite-bridge` prints a single
-`rewrite-bridge v0.3.1` whose children are the testbed, the providers and `rewrite-bridge-bevy`, and
+Every dependency is a public crate or a public git revision; there is nothing to patch locally. `rewrite-bridge` (`0.4.0`) and
+`rewrite-bridge-bevy` (`0.4.0`) come from [crates.io](https://crates.io/crates/rewrite-bridge), and all five providers ask
+crates.io for `rewrite-bridge` `0.4` too, so Cargo builds one copy: `cargo tree -i rewrite-bridge` prints a single
+`rewrite-bridge v0.4.0` whose children are the testbed, the providers and `rewrite-bridge-bevy`, and
 `grep -c 'name = "rewrite-bridge"' Cargo.lock` prints 1. Move the providers' revisions
 together, and keep them on the same `0.x` line of rewrite-bridge as the two lines above: a provider on another line would
 be a second copy.

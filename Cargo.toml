@@ -15,11 +15,12 @@ serde_json = "1"
 toml = "0.8"
 png = "0.18"
 avian3d = { version = "0.8", default-features = false, features = ["3d", "parry-f32", "parallel"] }
-rewrite-bridge = "0.3.1"
-rewrite-bridge-bevy = "0.3.0"
+rewrite-bridge = "0.4"
+rewrite-bridge-bevy = "0.4"
 
-# The providers, by public git revision (their rewrite-bridge 0.3 commits). All of them take rewrite-bridge 0.3 from
-# crates.io, like the two lines above, so Cargo.lock holds one copy of it.
+# The providers, by public git revision. These revisions are still their rewrite-bridge 0.3 commits: they move to the
+# rewrite-bridge 0.4 releases of the five readers (all of them take rewrite-bridge 0.4 from crates.io, like the two lines
+# above, so Cargo.lock holds one copy of it), and the build resolves two copies until they do.
 wt-unpack = { git = "https://github.com/patodois/wt-unpack", rev = "c06c71cd9d3e57b686b5e98531c681aef18b40a3", features = ["bridge"], optional = true }
 wf-unpack = { git = "https://github.com/patodois/wf-unpack", rev = "c482a56e7480335b15f336af96f563430be01ac7", features = ["bridge"], optional = true }
 hytale-unpack = { git = "https://github.com/patodois/hytale-unpack", rev = "c29e8db3e98fa86fdbba2b2bf78e8f0e32c4aa3e", optional = true }
