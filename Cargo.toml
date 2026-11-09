@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2021"
 description = "Loads assets from every rewrite-bridge provider side by side, to check scale, orientation, animation, materials and physics across games"
 license = "MIT OR Apache-2.0"
+keywords = ["gamedev", "rewrite-bridge", "bevy", "gltf", "assets"]
+categories = ["game-development", "rendering"]
 # Local tool: it needs the owner's own game installs to do anything
 publish = false
 

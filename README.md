@@ -3,9 +3,7 @@
 [![rewrite-bridge on crates.io](https://img.shields.io/crates/v/rewrite-bridge.svg?label=rewrite-bridge)](https://crates.io/crates/rewrite-bridge)
 [![rewrite-bridge-bevy on crates.io](https://img.shields.io/crates/v/rewrite-bridge-bevy.svg?label=rewrite-bridge-bevy)](https://crates.io/crates/rewrite-bridge-bevy)
 
-A [Bevy](https://bevy.org) 0.20 app that loads assets from every [rewrite-bridge](https://github.com/patodois/rewrite-bridge)
-provider side by side, so that scale, orientation, animation, materials and physics can be checked visually across
-games. It also renders fixed shots headless, for visual regression.
+bridge-testbed is a [Bevy](https://bevy.org) 0.20 app for developers to compare [rewrite-bridge](https://github.com/patodois/rewrite-bridge) provider assets side by side for scale, orientation, animation, materials and physics. It also renders fixed shots headless, for visual regression.
 
 It spawns what the providers return, unchanged, through `rewrite-bridge-bevy` (no mesh or material conversion of its
 own). Everything that is not game data is the testbed's and is labelled as such: the reference objects, the lighting,
