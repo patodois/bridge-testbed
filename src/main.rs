@@ -187,10 +187,7 @@ fn main() -> Result<()> {
             Ok(())
         }
         Some(Command::Physics { out, seconds }) => {
-            anyhow::ensure!(
-                seconds.is_finite() && seconds > 0.0,
-                "--seconds must be a positive number"
-            );
+            restpose::scene_length(seconds).map_err(anyhow::Error::msg)?;
             let config = read_config(&cli.config)?;
             if let Some(dir) = out.parent().filter(|d| !d.as_os_str().is_empty()) {
                 std::fs::create_dir_all(dir)?;

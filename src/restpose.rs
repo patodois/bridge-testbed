@@ -74,7 +74,8 @@ pub struct Body {
 #[derive(Resource)]
 pub struct RestRun {
     out: PathBuf,
-    seconds: f32,
+    /// How long each scene runs, simulated
+    length: Duration,
     state: State,
     /// Dynamic items still to drop, by index into the gallery
     queue: Vec<usize>,
@@ -103,11 +104,20 @@ enum Next {
     End,
 }
 
+/// The simulated time each scene runs for: a finite number of seconds above 0 that a `Duration`
+/// can hold (`Duration::from_secs_f32` panics above about 1.8e19 s)
+pub fn scene_length(seconds: f32) -> Result<Duration, String> {
+    if !(seconds.is_finite() && seconds > 0.0) {
+        return Err("--seconds must be a positive number".into());
+    }
+    Duration::try_from_secs_f32(seconds).map_err(|_| format!("--seconds {seconds} is too long"))
+}
+
 impl RestRun {
     pub fn new(out: PathBuf, seconds: f32) -> Self {
         Self {
             out,
-            seconds,
+            length: scene_length(seconds).unwrap_or(Duration::MAX),
             state: State::Waiting,
             queue: Vec::new(),
             frames: 0,
@@ -154,7 +164,7 @@ pub fn step(
     if run.frames < SETTLE_FRAMES {
         return;
     }
-    let seconds = Duration::from_secs_f32(run.seconds);
+    let seconds = run.length;
     let now = time.elapsed();
     let state = std::mem::replace(&mut run.state, State::Finished);
     run.state = match state {
@@ -283,6 +293,17 @@ fn finish(run: &RestRun) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_length_that_a_duration_cannot_hold_is_refused() {
+        assert_eq!(scene_length(6.0), Ok(Duration::from_secs(6)));
+        for bad in [1e20, 6e20, 0.0, -1.0, f32::NAN, f32::INFINITY] {
+            assert!(scene_length(bad).is_err(), "{bad} was accepted");
+        }
+        // Nothing panics later either, whatever reaches the run
+        let run = RestRun::new(PathBuf::from("rest.json"), 1e20);
+        assert_eq!(run.length, Duration::MAX);
+    }
 
     #[test]
     fn negative_zero_is_written_as_zero() {
