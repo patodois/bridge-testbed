@@ -44,20 +44,22 @@ pub fn setup_ground(mut commands: Commands, gallery: Res<Gallery>) {
     ));
 }
 
-/// Adds the colliders of a placed item; returns the sentence the HUD shows for it
+/// Adds the colliders of a placed item; returns the sentence the HUD shows for it, and whether a
+/// dynamic body (a convex hull that could be built) was attached
 pub fn attach(
     commands: &mut Commands,
     root: Entity,
     collision: Collision,
     dynamic: bool,
     density: f32,
-) -> String {
+) -> (String, bool) {
     let Collision {
         hull,
         trimesh,
         note,
     } = collision;
     let mut notes: Vec<String> = Vec::new();
+    let mut body = false;
     if dynamic {
         match hull.and_then(|h| Collider::convex_hull(&h)) {
             Some(collider) => {
@@ -68,6 +70,7 @@ pub fn attach(
                     RigidBodyDisabled,
                     Prop,
                 ));
+                body = true;
                 notes.push(format!(
                     "dynamic convex hull of the render mesh (testbed assumption), {density} kg/m3; Space drops it"
                 ));
@@ -107,7 +110,18 @@ pub fn attach(
     if let Some(n) = note {
         notes.push(n);
     }
-    notes.join("; ")
+    (notes.join("; "), body)
+}
+
+/// The stack block's hull points, if a convex hull can be built from them (collinear points give
+/// none, and a block without a collider would neither fall nor be removed by reset)
+pub fn stack_hull(hull: Vec<Vec3>) -> Result<Vec<Vec3>, String> {
+    if Collider::convex_hull(&hull).is_none() {
+        return Err(
+            "no convex hull can be built for the stack block (its points are degenerate)".into(),
+        );
+    }
+    Ok(hull)
 }
 
 /// Puts the selected prop `drop_height` above the ground and lets go
@@ -153,6 +167,10 @@ pub fn spawn_stack(gallery: &Gallery, bridge: &mut Bridge) {
     let Some(Ok(block)) = &gallery.stack else {
         return;
     };
+    // `stack_hull` checked it when the block loaded
+    let Some(collider) = Collider::convex_hull(&block.hull) else {
+        return;
+    };
     let count = gallery.config.stack.as_ref().map_or(6, |s| s.count);
     // Layers of n, n-1, ... blocks, as many as `count` needs
     let mut n = 1;
@@ -171,15 +189,13 @@ pub fn spawn_stack(gallery: &Gallery, bridge: &mut Bridge) {
                 STACK_AT[0] + (i as f32 - (per as f32 - 1.0) * 0.5) * (block.size.x + STACK_GAP);
             let y = layer as f32 * (block.size.y + STACK_GAP) - block.min_y + STACK_GAP;
             let root = bridge.spawn_model(block.model.clone()).root;
-            if let Some(collider) = Collider::convex_hull(&block.hull) {
-                bridge.commands.entity(root).insert((
-                    Transform::from_xyz(x, y, STACK_AT[1]),
-                    RigidBody::Dynamic,
-                    collider,
-                    ColliderDensity(gallery.config.physics.density),
-                    StackBody(placed),
-                ));
-            }
+            bridge.commands.entity(root).insert((
+                Transform::from_xyz(x, y, STACK_AT[1]),
+                RigidBody::Dynamic,
+                collider.clone(),
+                ColliderDensity(gallery.config.physics.density),
+                StackBody(placed),
+            ));
             placed += 1;
         }
         layer += 1;
@@ -200,5 +216,47 @@ pub fn keys(
     }
     if keys.just_pressed(KeyCode::KeyB) {
         spawn_stack(&gallery, &mut bridge);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn hull(points: &[[f32; 3]]) -> Collision {
+        Collision {
+            hull: Some(points.iter().map(|p| Vec3::from(*p)).collect()),
+            trimesh: None,
+            note: None,
+        }
+    }
+
+    const COLLINEAR: [[f32; 3]; 4] = [[0.0; 3], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0], [3.0, 0.0, 0.0]];
+    const TETRAHEDRON: [[f32; 3]; 4] =
+        [[0.0; 3], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
+
+    #[test]
+    fn a_hull_that_cannot_be_built_is_not_a_body() {
+        let mut world = World::new();
+        let root = world.spawn_empty().id();
+        let mut commands = world.commands();
+        let (note, body) = attach(&mut commands, root, hull(&COLLINEAR), true, 1.0);
+        world.flush();
+        assert!(!body, "{note}");
+        assert!(world.get::<Prop>(root).is_none());
+
+        let root = world.spawn_empty().id();
+        let mut commands = world.commands();
+        let (_, body) = attach(&mut commands, root, hull(&TETRAHEDRON), true, 1.0);
+        world.flush();
+        assert!(body);
+        assert!(world.get::<Prop>(root).is_some());
+    }
+
+    #[test]
+    fn a_stack_block_needs_a_hull_that_can_be_built() {
+        let points = |p: &[[f32; 3]]| p.iter().map(|p| Vec3::from(*p)).collect::<Vec<_>>();
+        assert!(stack_hull(points(&COLLINEAR)).is_err());
+        assert_eq!(stack_hull(points(&TETRAHEDRON)).unwrap().len(), 4);
     }
 }

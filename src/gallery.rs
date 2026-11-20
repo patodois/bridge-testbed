@@ -255,6 +255,7 @@ fn arrive(gallery: &mut Gallery, bridge: &mut Bridge, slot: Slot, result: Result
                         .collision
                         .hull
                         .ok_or_else(|| "the stack block has no convex hull".to_string())?;
+                    let hull = crate::physics::stack_hull(hull)?;
                     let b = l.bounds.ok_or("the stack block has no vertices")?;
                     Ok(StackBlock {
                         model: am.model,
@@ -362,11 +363,11 @@ pub fn place(
         .hull
         .as_ref()
         .map(|h| h.iter().map(|p| p.y).fold(f32::MAX, f32::min));
-    let collision_note = if opts.physics {
+    let (collision_note, body) = if opts.physics {
         crate::physics::attach(&mut bridge.commands, root, collision, dynamic, density)
     } else {
         collision.hull = None;
-        String::new()
+        (String::new(), false)
     };
     let item = &mut gallery.items[idx];
     item.root = Some(root);
@@ -377,7 +378,8 @@ pub fn place(
     item.clips = clips;
     item.load_seconds = seconds;
     item.status = Status::Ready;
-    item.has_hull = opts.physics && hull_min_y.is_some();
+    // Only an item that got a body can be dropped and put back
+    item.has_hull = body && hull_min_y.is_some();
     item.hull_min_y = hull_min_y.unwrap_or(0.0);
     item.collision_note = collision_note;
     if opts.labels {
