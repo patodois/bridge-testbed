@@ -110,7 +110,8 @@ a terminal too.
 
   A leading `~` or `~/` in a `path` is your home folder (`$HOME`, on Windows `%USERPROFILE%`), so `path = "~/Games/smt3hd"`
   works; `~other` is not expanded. Other relative paths are relative to where you run the program.
-- `[[items]]`: `provider`, `id`, `kind = "model" | "animated" | "scene"`, `label` (also the shot's file name), and
+- `[[items]]`: `provider`, `id`, `kind = "model" | "animated" | "scene"`, `label` (also the shot's file name, so a plain
+  name that every system can hold: none of `/ \ < > : " | ? *`, no leading dot, no trailing space or dot, not `CON`, `COM1` and the like), and
   optionally `dynamic = true` (a rigid body), `collide = true` (a static trimesh), `collision_id` (a scene's own
   collision), `at = [x, z]` (a fixed place).
 - `[gallery]`: `columns`, `gap`, `snap_to_ground`, `scene_lights`. `[physics]`: `density`, `drop_height`, `gravity`.

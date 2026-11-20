@@ -195,12 +195,10 @@ impl Config {
                     PROVIDER_NAMES.join(", ")
                 );
             }
-            if item.label.is_empty()
-                || item.label.contains(['/', '\\'])
-                || item.label.starts_with('.')
-            {
+            if !is_plain_file_name(&item.label) {
                 bail!(
-                    "item label {:?} must be a plain file name (it names the shot's PNG)",
+                    "item label {:?} must be a plain file name on every system (it names the shot's PNG): \
+no / \\ < > : \" | ? * or control characters, no leading dot, no trailing space or dot, not a Windows device name such as CON or COM1",
                     item.label
                 );
             }
@@ -210,6 +208,27 @@ impl Config {
         }
         Ok(config)
     }
+}
+
+/// Whether `name` can be a file name, as it is, on Linux, macOS and Windows (the release ships for all
+/// three): not empty, no path separator, no character Windows refuses or reads as a stream (`:`), no
+/// control character, no leading dot (hidden, `.` and `..`), no trailing space or dot (Windows drops
+/// them), and not a Windows device name, with or without an extension.
+pub fn is_plain_file_name(name: &str) -> bool {
+    const RESERVED: [&str; 4] = ["CON", "PRN", "AUX", "NUL"];
+    let stem = name.split('.').next().unwrap_or("").to_ascii_uppercase();
+    let device = RESERVED.contains(&stem.as_str())
+        || (stem.len() == 4
+            && (stem.starts_with("COM") || stem.starts_with("LPT"))
+            && stem.as_bytes()[3].is_ascii_digit()
+            && stem.as_bytes()[3] != b'0');
+    !name.is_empty()
+        && !name.starts_with('.')
+        && !name.ends_with([' ', '.'])
+        && !name
+            .chars()
+            .any(|c| c.is_control() || "/\\<>:\"|?*".contains(c))
+        && !device
 }
 
 #[cfg(test)]
@@ -257,6 +276,55 @@ mod tests {
             c.providers["nocturne"].path.as_deref(),
             Some(PathBuf::from(home).join("Games/smt3hd").as_path())
         );
+    }
+
+    #[test]
+    fn labels_are_file_names_that_windows_can_hold_too() {
+        let label = |l: &str| {
+            Config::parse(&format!(
+                "[[items]]\nprovider='wt'\nid='a'\nlabel={}\n",
+                toml::Value::String(l.into())
+            ))
+        };
+        for bad in [
+            "Tank: M4",
+            "a?b",
+            "a*b",
+            "a<b",
+            "a>b",
+            "a\"b",
+            "a|b",
+            "tab\there",
+            "bell\u{7}",
+            "del\u{7f}",
+            "trailing ",
+            "trailing.",
+            "CON",
+            "con",
+            "Nul",
+            "COM1",
+            "lpt9",
+            "aux.old",
+            "",
+            "x/y",
+            "x\\y",
+            ".hidden",
+        ] {
+            assert!(label(bad).is_err(), "{bad:?} was accepted");
+        }
+        for good in [
+            "Sherman",
+            "Trork",
+            "Grass block",
+            "Oak stairs",
+            "M4 (76)",
+            "a.b",
+            "CONSOLE",
+            "COM10",
+            "Ünïcode",
+        ] {
+            assert!(label(good).is_ok(), "{good:?} was refused");
+        }
     }
 
     #[test]
