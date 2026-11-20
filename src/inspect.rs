@@ -102,7 +102,7 @@ pub fn run(config: &Config, only: Option<&str>, max_clips: usize) -> Result<()> 
                 if let rb::SceneModel::Inline(m) = m {
                     if let Some(b) = crate::analyze::model_bounds(m) {
                         let s = b.size();
-                        if s.max_element() > crate::analyze::MAX_PLACEMENT_M {
+                        if crate::analyze::is_stray_model(&b) {
                             let far = m
                                 .meshes
                                 .iter()

@@ -16,6 +16,13 @@ pub const MAX_TRIMESH_TRIANGLES: usize = 1_500_000;
 /// reported: a level is a few kilometres across, and a stray placement at 10^11 m would stretch the box
 pub const MAX_PLACEMENT_M: f32 = 100_000.0;
 
+/// Whether a scene model is stray (provider data gone wrong): wider than twice [`MAX_PLACEMENT_M`],
+/// so that its vertices reach beyond it. Such a model is left out of the bounds, and `inspect`
+/// reports the same ones.
+pub fn is_stray_model(bounds: &Aabb) -> bool {
+    bounds.size().max_element() > 2.0 * MAX_PLACEMENT_M
+}
+
 /// Whether a placement is within [`MAX_PLACEMENT_M`] of the origin
 pub fn placement_ok(t: &rb::Transform) -> bool {
     t.translation
@@ -106,7 +113,7 @@ pub struct Stats {
     pub blended_materials: usize,
     /// Scene placements beyond [`MAX_PLACEMENT_M`] of the origin, left out of the bounds and colliders
     pub stray_placements: usize,
-    /// Scene models with vertices beyond [`MAX_PLACEMENT_M`] (provider data gone wrong), left out of the bounds
+    /// Scene models that [`is_stray_model`] calls stray (provider data gone wrong), left out of the bounds
     pub stray_models: Vec<String>,
     /// Scenes: what the provider says about the sky (`None` for a model); the testbed never draws it
     pub sky: Option<String>,
@@ -305,7 +312,7 @@ pub fn scene_stats(scene: &rb::Scene) -> (Stats, Option<Aabb>) {
         .map(|sm| match sm {
             rb::SceneModel::Inline(model) => {
                 let b = model_bounds(model)?;
-                if b.size().max_element() > 2.0 * MAX_PLACEMENT_M {
+                if is_stray_model(&b) {
                     s.stray_models.push(model.name.clone());
                     return None;
                 }
@@ -483,6 +490,16 @@ pub fn keyframe_times(a: &rb::Animation) -> Vec<f32> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn one_rule_says_which_scene_model_is_stray() {
+        let wide = |km: f32| Aabb::new(Vec3::ZERO, Vec3::new(km * 1000.0, 1.0, 1.0));
+        assert!(
+            !is_stray_model(&wide(150.0)),
+            "kept in the bounds, so not reported either"
+        );
+        assert!(is_stray_model(&wide(250.0)));
+    }
 
     fn quad(flip: bool) -> rb::Model {
         let idx = if flip {
