@@ -170,7 +170,7 @@ Clips are played as the provider gave them. Warframe's carry **root motion** (th
 Avian 3D 0.8 (the version that supports Bevy 0.20). **The bridge carries no physics data yet, so every physics value
 here is a testbed assumption**; the panel says so on screen.
 
-- Gravity 9.81 m/s² (assumption). Friction and restitution are Avian's defaults (assumption). The ground collider is a
+- Gravity 9.81 m/s² unless `[physics] gravity` says otherwise (assumption); the panel shows the value in use. Friction and restitution are Avian's defaults (assumption). The ground collider is a
   testbed plane at y = 0.
 - **Static colliders use the game's own collision wherever the provider has it, and say so in the panel:**
   - Warframe: a scene item with `collision_id = "<level>?collision"` collides with the PhysX shapes of the level.

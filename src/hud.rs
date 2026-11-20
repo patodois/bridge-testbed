@@ -109,12 +109,17 @@ pub struct HudText;
 #[derive(Component)]
 pub struct PhysicsNote;
 
-pub const PHYSICS_NOTE: &str = "PHYSICS: the bridge carries no physics data yet, so masses, gravity, friction and restitution are testbed assumptions. \
-Avian 0.8; gravity 9.81 m/s2; mass = density x hull volume (1 kg per m3 by default); friction and restitution are Avian's defaults; \
+/// The panel's statement of the physics assumptions, with the `[physics]` values in use
+pub fn physics_note(gravity: f32, density: f32) -> String {
+    format!(
+        "PHYSICS: the bridge carries no physics data yet, so masses, gravity, friction and restitution are testbed assumptions. \
+Avian 0.8; gravity {gravity} m/s2; mass = density x hull volume ({density} kg per m3); friction and restitution are Avian's defaults; \
 dynamic props are convex hulls of the render mesh at rest. Static colliders are the game's own collision shapes where the provider \
-offers them outside the bridge (Warframe, War Thunder) and otherwise a trimesh of the render meshes (an assumption: Hytale, Nocturne, Minecraft).";
+offers them outside the bridge (Warframe, War Thunder) and otherwise a trimesh of the render meshes (an assumption: Hytale, Nocturne, Minecraft)."
+    )
+}
 
-pub fn spawn_hud(mut commands: Commands) {
+pub fn spawn_hud(mut commands: Commands, gallery: Res<Gallery>) {
     commands.spawn((
         HudText,
         Text::new(""),
@@ -135,7 +140,10 @@ pub fn spawn_hud(mut commands: Commands) {
     ));
     commands.spawn((
         PhysicsNote,
-        Text::new(PHYSICS_NOTE),
+        Text::new(physics_note(
+            gallery.config.physics.gravity,
+            gallery.config.physics.density,
+        )),
         TextFont {
             font_size: 12.0.into(),
             ..default()
@@ -341,5 +349,19 @@ pub fn keys(
                 item.clip.applied = None;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_physics_note_gives_the_gravity_and_density_in_use() {
+        let note = physics_note(1.62, 500.0);
+        assert!(note.contains("gravity 1.62 m/s2"), "{note}");
+        assert!(note.contains("500 kg per m3"), "{note}");
+        assert!(!note.contains("9.81"), "{note}");
+        assert!(physics_note(9.81, 1.0).contains("gravity 9.81 m/s2"));
     }
 }
