@@ -447,6 +447,17 @@ pub fn draw_gizmos(mut gizmos: Gizmos, gallery: Res<Gallery>, view: Res<crate::h
     }
 }
 
+/// The clip to drive: the selection wrapped over the provider's `listed` clips, or `None` when the
+/// plugin built fewer clips (`built`) than the provider listed and the selection is past them. An
+/// item whose clip is missing is skipped rather than taking the whole gallery down.
+fn current_clip(state: &mut ClipState, listed: usize, built: usize) -> Option<usize> {
+    if listed == 0 {
+        return None;
+    }
+    state.current %= listed;
+    (state.current < built).then_some(state.current)
+}
+
 /// Starts or stops the clip the item is set to, and moves the camera-independent clip state
 pub fn drive_clips(
     mut gallery: ResMut<Gallery>,
@@ -461,8 +472,10 @@ pub fn drive_clips(
         };
         let n = item.clips.len();
         let state = &mut item.clip;
-        state.current %= n;
-        let node = clips.clips()[state.current].node;
+        let Some(current) = current_clip(state, n, clips.clips().len()) else {
+            continue;
+        };
+        let node = clips.clips()[current].node;
         if state.applied != Some(state.current) {
             player.stop_all();
             let a = player.play(node);
@@ -485,5 +498,26 @@ pub fn drive_clips(
                 state.current = (state.current + 1) % n;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_clip_the_plugin_did_not_build_is_skipped_not_a_panic() {
+        // The provider lists three clips, the plugin built two
+        let mut state = ClipState {
+            current: 2,
+            ..ClipState::default()
+        };
+        assert_eq!(current_clip(&mut state, 3, 2), None);
+        state.current = 1;
+        assert_eq!(current_clip(&mut state, 3, 2), Some(1));
+        // The selection wraps over the provider's list, as before
+        state.current = 4;
+        assert_eq!(current_clip(&mut state, 3, 3), Some(1));
+        assert_eq!(state.current, 1);
     }
 }
