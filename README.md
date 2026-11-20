@@ -265,8 +265,8 @@ crates.io for `rewrite-bridge` `0.4` too, so Cargo builds one copy: `cargo tree 
 together, and keep them on the same `0.x` line of rewrite-bridge as the two lines above: a provider on another line would
 be a second copy.
 
-nocturne-unpack reads Unity 2019.4 bundles with a patched fork of rabex 0.2.1 that it takes as a git dependency itself
-(see its `NOTES-upstream.md`), so nothing is repeated here. Drop it when upstream rabex opens these bundles.
+nocturne-unpack reads Unity 2019.4 bundles through `unity-bundle` 0.1 from crates.io (`cargo tree -i unity-bundle`), so no
+fork or git dependency of its own is in the build.
 
 ## Memory and disk
 
