@@ -239,7 +239,8 @@ bridge-testbed --script "frame all; wait 1; shot overview; key tab; key tab; fra
   frame Block 3.5; key space; wait 0.1; shot dropped; wait 2.5; shot landed; key r; key b; wait 4; shot stack" --out captures
 ```
 
-The commands are listed in `src/capture.rs`.
+The commands are listed in `src/capture.rs`. A `shot` removes the PNG an earlier run left under its name and waits for the new
+one; if it never lands, the run says so and exits with status 1.
 
 ## Providers
 

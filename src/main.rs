@@ -311,7 +311,8 @@ fn run_gallery(config: Config, args: GalleryArgs) -> Result<()> {
         );
     }
     stage::add_resources(&mut app);
-    app.add_plugins((bridge_plugin(), physics::plugins()))
+    match app
+        .add_plugins((bridge_plugin(), physics::plugins()))
         .insert_resource(gallery::Gallery::new(config))
         .init_resource::<camera::Orbit>()
         .init_resource::<camera::FrameRequest>()
@@ -340,8 +341,12 @@ fn run_gallery(config: Config, args: GalleryArgs) -> Result<()> {
                 hud::update_labels.after(camera::orbit_camera),
             ),
         )
-        .run();
-    Ok(())
+        .run()
+    {
+        AppExit::Success => Ok(()),
+        // A scripted capture that never landed (the script has logged which)
+        AppExit::Error(code) => bail!("the gallery stopped with an error (status {code})"),
+    }
 }
 
 #[derive(Resource)]

@@ -21,7 +21,7 @@ pub const SIZE: u32 = 512;
 /// Frames after the item is placed before its clip is frozen
 const FREEZE_AT: u32 = 20;
 /// Frames after the item is placed before the picture is taken, for uploads, mipmaps and shadows
-const SHOOT_AT: u32 = 45;
+pub(crate) const SHOOT_AT: u32 = 45;
 /// Fraction of the first clip at which an animated item is frozen
 pub const CLIP_FRACTION: f32 = 0.0;
 /// The manifest's lighting line for `--unlit`
@@ -370,7 +370,7 @@ pub fn step(
 
 /// What one frame of the Shoot state decided
 #[derive(Debug, PartialEq)]
-enum Shot {
+pub(crate) enum Shot {
     /// Keep waiting, with the path of the capture once it was requested
     Wait(Option<PathBuf>),
     /// This request's PNG is on disk
@@ -382,7 +382,12 @@ enum Shot {
 /// One frame of the Shoot state at frame `n`: requests the capture at `SHOOT_AT` (through `request`,
 /// after removing any PNG an earlier run left at `target`, so that the file existing later means this
 /// request wrote it) and then waits for the file.
-fn advance_shot(n: u32, path: Option<PathBuf>, target: &Path, request: impl FnOnce(&Path)) -> Shot {
+pub(crate) fn advance_shot(
+    n: u32,
+    path: Option<PathBuf>,
+    target: &Path,
+    request: impl FnOnce(&Path),
+) -> Shot {
     match path {
         None if n == SHOOT_AT => {
             if let Err(err) = invalidate_stale(target) {

@@ -15,9 +15,12 @@
 //! | `set help\|labels\|aabb\|grid on\|off` | the view toggles |
 //! | `seek LABEL S` | pauses the item's clip at S seconds |
 //! | `key SPACE` / `key shift+c` | presses keys for a frame, so the real key handlers run |
-//! | `shot NAME` | writes `NAME.png` into the output folder |
+//! | `shot NAME` | writes `NAME.png` into the output folder, and waits until it is there |
+//!
+//! A `shot` first removes a `NAME.png` an earlier run left, then waits for the new file (up to 600
+//! frames). A shot that never lands is reported, and the program then exits with status 1.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Result};
 use avian3d::prelude::*;
@@ -29,6 +32,7 @@ use crate::gallery::Gallery;
 use crate::hud::View;
 use crate::offscreen::Target;
 use crate::physics::StackBody;
+use crate::shots::{advance_shot, Shot, SHOOT_AT};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Command {
@@ -125,8 +129,18 @@ pub struct Script {
     pub out: PathBuf,
     next: usize,
     wait_frames: u32,
-    /// Frames to wait after a shot for the file
-    settle: u32,
+    /// The capture being waited for
+    shot: Option<PendingShot>,
+    /// The shots that never landed
+    failed: Vec<String>,
+}
+
+/// A capture in progress, run through the same states as the `shots` command's
+struct PendingShot {
+    /// The frame in the states of `shots::advance_shot`
+    n: u32,
+    path: Option<PathBuf>,
+    target: PathBuf,
 }
 
 impl Script {
@@ -136,7 +150,52 @@ impl Script {
             out,
             next: 0,
             wait_frames: 0,
-            settle: 0,
+            shot: None,
+            failed: Vec::new(),
+        }
+    }
+
+    /// Starts a capture into `NAME.png`; the next `step_shot` removes an earlier file and asks for it
+    fn begin_shot(&mut self, name: &str) {
+        self.shot = Some(PendingShot {
+            n: SHOOT_AT - 1,
+            path: None,
+            target: self.out.join(format!("{name}.png")),
+        });
+    }
+
+    /// One frame of the capture in progress: `true` while it is still waited for. `request` asks for
+    /// the image to be written to the path it is given.
+    fn step_shot(&mut self, request: impl FnOnce(&Path)) -> bool {
+        let Some(mut shot) = self.shot.take() else {
+            return false;
+        };
+        shot.n += 1;
+        match advance_shot(shot.n, shot.path.take(), &shot.target, request) {
+            Shot::Wait(path) => {
+                shot.path = path;
+                self.shot = Some(shot);
+                true
+            }
+            Shot::Saved => {
+                info!("script: shot {} saved", shot.target.display());
+                false
+            }
+            Shot::Failed(why) => {
+                error!("script: shot {} failed: {why}", shot.target.display());
+                self.failed
+                    .push(format!("{}: {why}", shot.target.display()));
+                false
+            }
+        }
+    }
+
+    /// How the program ends once the script is done: an error when a shot never landed
+    fn outcome(&self) -> AppExit {
+        if self.failed.is_empty() {
+            AppExit::Success
+        } else {
+            AppExit::error()
         }
     }
 }
@@ -194,9 +253,14 @@ pub fn run(
         *ready_frames += 1;
         return;
     }
-    if script.settle > 0 {
-        script.settle -= 1;
-        return;
+    if script.shot.is_some() {
+        let image = target.0.clone();
+        let waiting = script.step_shot(|p| {
+            crate::offscreen::save(&mut bridge.commands, &image, p.to_path_buf());
+        });
+        if waiting {
+            return;
+        }
     }
     if script.wait_frames > 0 {
         script.wait_frames -= 1;
@@ -204,7 +268,10 @@ pub fn run(
     }
     let Some(command) = script.commands.get(script.next).cloned() else {
         info!("script finished");
-        exit.write(AppExit::Success);
+        for f in &script.failed {
+            error!("script: no capture: {f}");
+        }
+        exit.write(script.outcome());
         return;
     };
     script.next += 1;
@@ -296,10 +363,8 @@ pub fn run(
             script.wait_frames = 2;
         }
         Command::Shot(name) => {
-            let path = script.out.join(format!("{name}.png"));
-            crate::offscreen::save(&mut bridge.commands, &target.0, path.clone());
-            info!("script: shot {}", path.display());
-            script.settle = 20;
+            info!("script: shot {name}");
+            script.begin_shot(&name);
         }
     }
 }
@@ -312,5 +377,60 @@ pub fn physics_time(mut time: ResMut<Time<Physics>>, gallery: Res<Gallery>) {
         time.unpause();
     } else {
         time.pause();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn scratch(name: &str) -> PathBuf {
+        let dir =
+            std::env::temp_dir().join(format!("testbed-capture-{name}-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    /// Steps the shot frame by frame as `run` does; `write` is what the capture puts on disk
+    fn shoot(script: &mut Script, name: &str, write: Option<&[u8]>) -> u32 {
+        script.begin_shot(name);
+        let mut frames = 0;
+        while script.step_shot(|p| {
+            if let Some(bytes) = write {
+                std::fs::write(p, bytes).unwrap();
+            }
+        }) {
+            frames += 1;
+            assert!(frames < 10_000, "the shot never ended");
+        }
+        frames
+    }
+
+    #[test]
+    fn a_shot_that_never_lands_is_a_failure_not_the_old_png() {
+        let dir = scratch("stale");
+        let old = dir.join("overview.png");
+        std::fs::write(&old, b"png of an earlier run").unwrap();
+        let mut script = Script::new(Vec::new(), dir.clone());
+        shoot(&mut script, "overview", None);
+        assert_eq!(script.failed.len(), 1, "{:?}", script.failed);
+        assert!(!old.exists(), "the earlier run's PNG is still there");
+        assert_eq!(script.outcome(), AppExit::error());
+        std::fs::remove_dir(&dir).unwrap();
+    }
+
+    #[test]
+    fn a_shot_that_lands_is_waited_for_and_succeeds() {
+        let dir = scratch("lands");
+        let old = dir.join("after.png");
+        std::fs::write(&old, b"png of an earlier run").unwrap();
+        let mut script = Script::new(Vec::new(), dir.clone());
+        let frames = shoot(&mut script, "after", Some(b"new png"));
+        assert!(script.failed.is_empty(), "{:?}", script.failed);
+        assert!(frames > 0, "the script did not wait for the file");
+        assert_eq!(std::fs::read(&old).unwrap(), b"new png");
+        assert_eq!(script.outcome(), AppExit::Success);
+        std::fs::remove_file(&old).unwrap();
+        std::fs::remove_dir(&dir).unwrap();
     }
 }
