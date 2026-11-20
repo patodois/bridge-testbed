@@ -176,8 +176,8 @@ here is a testbed assumption**; the panel says so on screen.
   - Warframe: a scene item with `collision_id = "<level>?collision"` collides with the PhysX shapes of the level.
   - War Thunder: a level scene collides with its terrain model (the landmesh's collision mesh) and, at every placement,
     the object's own collision resource (`load_level_collision`: triangle meshes, convex hulls and boxes as one static
-    trimesh, tree trunks as capsule colliders). A `collide = true` model item tries `load_object_collision` for its
-    model name (or `collision_id`); vehicles have none, and the panel says so.
+    trimesh, tree trunks as capsule colliders). A `collide = true` model item tries `load_object_collision` for the
+    part of its id after the last `:` (the whole id without one), or for `collision_id`; vehicles have none, and the panel says so.
   - Everything else (Hytale, Nocturne, Minecraft, and a model or scene the provider has no collision for) gets a **static
     trimesh of the render meshes**, which is a testbed assumption and is labelled "not game collision". **Nocturne has no
     collision data in the bridge**, and **Minecraft has none in this provider** (a block's collision shape is in the

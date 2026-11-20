@@ -119,7 +119,7 @@ pub fn load_item(providers: &ProviderSet, item: &ItemConfig) -> Result<Loaded, S
             }
             if item.collide {
                 #[cfg(feature = "wt")]
-                wt_object_collision(providers, item, &am.model.name, &mut collision);
+                wt_object_collision(providers, item, &mut collision);
             }
             if item.collide && collision.trimesh.is_none() {
                 let g = analyze::rest_geometry(&am.model);
@@ -292,22 +292,26 @@ fn resolve(
     scene
 }
 
-/// A War Thunder object's own collision for a model item: `collision_id` names the object, else the model's
-/// name is tried. Vehicles have none, and the item then falls back to its render meshes.
+/// The War Thunder object whose collision a model item uses: `collision_id`, else the part of the
+/// item's id after its last `:` (the whole id when it has none)
 #[cfg(feature = "wt")]
-fn wt_object_collision(
-    providers: &ProviderSet,
-    item: &ItemConfig,
-    model_name: &str,
-    collision: &mut Collision,
-) {
+fn object_collision_name(item: &ItemConfig) -> String {
+    item.collision_id.clone().unwrap_or_else(|| {
+        item.id
+            .rsplit_once(':')
+            .map_or(item.id.as_str(), |(_, name)| name)
+            .to_string()
+    })
+}
+
+/// A War Thunder object's own collision for a model item, named by [`object_collision_name`].
+/// Vehicles have none, and the item then falls back to its render meshes.
+#[cfg(feature = "wt")]
+fn wt_object_collision(providers: &ProviderSet, item: &ItemConfig, collision: &mut Collision) {
     let Some(wt) = providers.wt(&item.provider) else {
         return;
     };
-    let name = item
-        .collision_id
-        .clone()
-        .unwrap_or_else(|| item.id.rsplit(':').next().unwrap_or(model_name).to_string());
+    let name = object_collision_name(item);
     match wt.load_object_collision(&name) {
         Ok(Some(o)) => match crate::wt_collision::object_trimesh(&o) {
             Ok(t) => collision.trimesh = Some(t),
@@ -455,6 +459,23 @@ mod tests {
             collision_id: None,
             at: None,
         }
+    }
+
+    /// Pins the name looked up today: `collision_id`, else the whole part of the id after its last `:`
+    /// (an id without `:` is used whole; the model's name is never tried)
+    #[cfg(feature = "wt")]
+    #[test]
+    fn the_wt_object_collision_name_is_the_id_after_its_last_colon() {
+        let mut it = item(ItemKind::Model, "tankModels:us_m4a1_sherman", false);
+        assert_eq!(object_collision_name(&it), "us_m4a1_sherman");
+        it.id = "a:b:c".into();
+        assert_eq!(object_collision_name(&it), "c");
+        it.id = "no_colon".into();
+        assert_eq!(object_collision_name(&it), "no_colon");
+        it.id = "trailing:".into();
+        assert_eq!(object_collision_name(&it), "");
+        it.collision_id = Some("bridge_a".into());
+        assert_eq!(object_collision_name(&it), "bridge_a");
     }
 
     #[test]
