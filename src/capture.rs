@@ -7,7 +7,7 @@
 //! |---|---|
 //! | `wait S` | simulates S seconds (60 frames each) |
 //! | `view ex,ey,ez,tx,ty,tz` | puts the camera at e looking at t |
-//! | `frame LABEL [H]` / `frame all` | frames an item's AABB (H extra metres above it), or everything |
+//! | `frame LABEL [H]` / `frame all [H]` | frames an item's AABB (H extra metres above it), or everything; a LABEL that ends in a number, such as `Tank 2`, is that item when one has that label |
 //! | `select LABEL` | the HUD's item |
 //! | `front LABEL` | frames an item from straight in front of it (+Z) |
 //! | `clip LABEL N` | sets item's clip (1-based) |
@@ -38,8 +38,9 @@ use crate::shots::{advance_shot, Shot, SHOOT_AT};
 pub enum Command {
     Wait(f32),
     View(Vec3, Vec3),
-    /// An item (or everything), with this many extra metres above it
-    Frame(Option<String>, f32),
+    /// `LABEL [H]` or `all [H]`: an item (or everything), with H extra metres above it. It is split
+    /// when the script runs, when the item labels are known (see `frame_target`)
+    Frame(String),
     Select(String),
     /// Looks at an item from straight in front of it (from +Z)
     Front(String),
@@ -77,17 +78,7 @@ pub fn parse(script: &str) -> Result<Vec<Command>> {
                 }
                 Command::View(Vec3::new(v[0], v[1], v[2]), Vec3::new(v[3], v[4], v[5]))
             }
-            "frame" => {
-                // `frame LABEL [EXTRA_HEIGHT]`
-                let (label, extra) = match rest.rsplit_once(' ') {
-                    Some((l, n)) => match n.parse::<f32>() {
-                        Ok(n) => (l.trim(), n),
-                        Err(_) => (rest, 0.0),
-                    },
-                    None => (rest, 0.0),
-                };
-                Command::Frame((label != "all").then(|| label.to_string()), extra)
-            }
+            "frame" => Command::Frame(rest.to_string()),
             "select" => Command::Select(rest.to_string()),
             "front" => Command::Front(rest.to_string()),
             "clip" => {
@@ -221,6 +212,24 @@ fn key_code(name: &str) -> Option<KeyCode> {
     })
 }
 
+/// What `frame ARG` frames: the item labelled ARG when there is one (so a label that ends in a
+/// number, such as `Tank 2`, is that item), else `LABEL H` with H extra metres above it; `all` is
+/// everything (`None`)
+fn frame_target(arg: &str, is_label: impl Fn(&str) -> bool) -> (Option<String>, f32) {
+    let (label, extra) = if is_label(arg) {
+        (arg, 0.0)
+    } else {
+        match arg.rsplit_once(' ') {
+            Some((l, n)) => match n.parse::<f32>() {
+                Ok(n) => (l.trim(), n),
+                Err(_) => (arg, 0.0),
+            },
+            None => (arg, 0.0),
+        }
+    };
+    ((label != "all").then(|| label.to_string()), extra)
+}
+
 fn find(gallery: &Gallery, label: &str) -> Option<usize> {
     gallery.items.iter().position(|i| i.cfg.label == label)
 }
@@ -285,7 +294,8 @@ pub fn run(
             orbit.pitch = (d.y / orbit.dist).clamp(-1.0, 1.0).asin();
             script.wait_frames = 4;
         }
-        Command::Frame(label, extra) => {
+        Command::Frame(arg) => {
+            let (label, extra) = frame_target(&arg, |l| find(&gallery, l).is_some());
             let bounds = match label {
                 None => crate::camera::all_bounds(&gallery),
                 Some(l) => {
@@ -404,6 +414,22 @@ mod tests {
             assert!(frames < 10_000, "the shot never ended");
         }
         frames
+    }
+
+    #[test]
+    fn frame_can_name_a_label_that_ends_in_a_number() {
+        let labels = ["Tank 2", "Trork"];
+        let is_label = |l: &str| labels.contains(&l);
+        let frame = |script: &str| match parse(script).unwrap().remove(0) {
+            Command::Frame(arg) => frame_target(&arg, is_label),
+            other => panic!("{other:?}"),
+        };
+        assert_eq!(frame("frame Tank 2"), (Some("Tank 2".to_string()), 0.0));
+        assert_eq!(frame("frame Tank 2 3.5"), (Some("Tank 2".to_string()), 3.5));
+        assert_eq!(frame("frame Trork 3.5"), (Some("Trork".to_string()), 3.5));
+        assert_eq!(frame("frame Trork"), (Some("Trork".to_string()), 0.0));
+        assert_eq!(frame("frame all"), (None, 0.0));
+        assert_eq!(frame("frame all 2"), (None, 2.0));
     }
 
     #[test]
