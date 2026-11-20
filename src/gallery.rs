@@ -314,19 +314,16 @@ pub fn place(
         mut collision,
         seconds,
     } = loaded;
-    let origin = gallery.slot(idx, bounds);
     let kind = gallery.items[idx].cfg.kind;
     let dynamic = gallery.items[idx].cfg.dynamic;
     let density = gallery.config.physics.density;
     let scene_lights = gallery.config.gallery.scene_lights;
-    let root = match payload {
-        Payload::Model(am) => {
-            if kind == ItemKind::Model {
-                bridge.spawn_model(am.model).root
-            } else {
-                bridge.spawn_animated(*am).root
-            }
-        }
+    let spawned = spawn_in_slot(gallery, idx, bounds, || match payload {
+        Payload::Model(am) => Ok(if kind == ItemKind::Model {
+            bridge.spawn_model(am.model).root
+        } else {
+            bridge.spawn_animated(*am).root
+        }),
         Payload::Scene(mut scene) => {
             if !scene_lights && !scene.lights.is_empty() {
                 warnings.push(format!(
@@ -344,14 +341,18 @@ pub fn place(
                             spawned.failed[0].1
                         ));
                     }
-                    spawned.root
+                    Ok(spawned.root)
                 }
-                Err(e) => {
-                    let msg = format!("invalid scene: {e}");
-                    fail(gallery, bridge, idx, msg, opts.labels);
-                    return;
-                }
+                Err(e) => Err(format!("invalid scene: {e}")),
             }
+        }
+    });
+    let (root, origin) = match spawned {
+        Ok(spawned) => spawned,
+        Err(msg) => {
+            // `fail` takes the item's one slot
+            fail(gallery, bridge, idx, msg, opts.labels);
+            return;
         }
     };
     bridge
@@ -392,6 +393,18 @@ pub fn place(
             .id();
         item.label = Some(e);
     }
+}
+
+/// Runs `spawn` and only then takes item `idx`'s slot for `bounds`, so that a spawn that fails leaves
+/// the layout to `fail`, which takes the slot once
+fn spawn_in_slot<T>(
+    gallery: &mut Gallery,
+    idx: usize,
+    bounds: Option<Aabb>,
+    spawn: impl FnOnce() -> Result<T, String>,
+) -> Result<(T, Vec3), String> {
+    let spawned = spawn()?;
+    Ok((spawned, gallery.slot(idx, bounds)))
 }
 
 /// The text over an item: its label and the size of its world AABB
@@ -506,6 +519,27 @@ pub fn drive_clips(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_item_that_fails_to_spawn_takes_one_slot() {
+        let config = Config::parse(
+            "[gallery]\ngap = 1.0\n[[items]]\nprovider='wt'\nid='a'\nlabel='A'\n[[items]]\nprovider='wt'\nid='b'\nlabel='B'\n",
+        )
+        .unwrap();
+        let mut g = Gallery::new(config);
+        let b = Aabb::new(Vec3::ZERO, Vec3::splat(2.0));
+        // Item 0's scene is invalid: the spawn fails, and the slot is taken once, by `fail`
+        let r: Result<((), Vec3), String> =
+            spawn_in_slot(&mut g, 0, Some(b), || Err("invalid".into()));
+        assert!(r.is_err());
+        assert_eq!(g.layout.column, 0, "the failed spawn took a slot");
+        let failed_origin = g.slot(0, None);
+        assert_eq!(failed_origin.x, 1.5);
+        // Item 1 comes right after the failed slot (1.5 m wide), with one gap
+        let ((), origin) = spawn_in_slot(&mut g, 1, Some(b), || Ok(())).unwrap();
+        assert_eq!(origin.x, 1.5 + FAILED_SLOT.x + 1.0);
+        assert_eq!(g.layout.column, 2);
+    }
 
     #[test]
     fn a_clip_the_plugin_did_not_build_is_skipped_not_a_panic() {
