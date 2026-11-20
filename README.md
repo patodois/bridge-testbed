@@ -214,7 +214,7 @@ warnings). Time is stepped by hand, so the same config on the same machine gives
 
 `bridge-testbed compare --base DIR1 --new DIR2 [--threshold 0.01] [--tolerance 4]` diffs the PNGs per pixel (a pixel
 differs when a channel differs by more than `--tolerance` of 255; an item regresses when more than `--threshold` of its
-pixels differ), compares the manifests' numbers (AABB, vertices, triangles, clips), prints a table, writes diff images to
+pixels differ), compares the manifests' numbers (AABB size and position, vertices, triangles, clips), prints a table, writes diff images to
 `NEW/diff/` and exits nonzero on regressions (also for an item that went missing or began to fail).
 
 For a reference comparison, two flags change what a shot shows (both are recorded in `manifest.json`, and `compare` says when

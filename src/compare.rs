@@ -138,6 +138,13 @@ pub fn geometry_changes(a: &Entry, b: &Entry) -> Vec<String> {
             out.push(format!("AABB size {x:?} -> {y:?}"));
         }
     }
+    // The shot camera frames the AABB, so a model whose origin moved (its AABB moved in its own
+    // space, which is where `shots` puts it) gives the same picture: only this number shows it
+    if let (Some(x), Some(y)) = (a.aabb_min, b.aabb_min) {
+        if (0..3).any(|k| (x[k] - y[k]).abs() > 1e-4) {
+            out.push(format!("AABB moved: min {x:?} -> {y:?}"));
+        }
+    }
     out
 }
 
@@ -292,6 +299,31 @@ mod tests {
         let back = read_png(&dir.join("a.png")).unwrap();
         assert_eq!(back.data, img.data);
         std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn a_model_that_moved_in_its_own_space_is_a_change() {
+        // The shot camera frames the AABB, so a model whose origin moved gives the same picture
+        let a = Entry {
+            aabb_min: Some([0.0, 0.0, 0.0]),
+            aabb_max: Some([1.0, 2.0, 3.0]),
+            aabb_size: Some([1.0, 2.0, 3.0]),
+            ..Entry::default()
+        };
+        let b = Entry {
+            aabb_min: Some([5.0, 0.0, 0.0]),
+            aabb_max: Some([6.0, 2.0, 3.0]),
+            ..a.clone()
+        };
+        let c = geometry_changes(&a, &b);
+        assert_eq!(c.len(), 1, "{c:?}");
+        assert!(c[0].contains("AABB moved"), "{c:?}");
+        // Below the size tolerance it is the same
+        let b = Entry {
+            aabb_min: Some([5e-5, 0.0, 0.0]),
+            ..a.clone()
+        };
+        assert!(geometry_changes(&a, &b).is_empty());
     }
 
     #[test]
