@@ -1881,7 +1881,6 @@ dependencies = [
  "bevy",
  "clap",
  "hytale-unpack",
- "libc",
  "mc-unpack",
  "nocturne-unpack",
  "png",

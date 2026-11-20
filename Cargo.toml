@@ -27,7 +27,6 @@ wf-unpack = { git = "https://github.com/patodois/wf-unpack", rev = "e47563b878e6
 hytale-unpack = { git = "https://github.com/patodois/hytale-unpack", rev = "a23c089a0daa096ad1ac90b64b081bdcd45f7910", optional = true }
 nocturne-unpack = { git = "https://github.com/patodois/nocturne-unpack", rev = "e9a5a8b87b17ffa15e7ec8eaa83cc38095c97140", features = ["bridge"], optional = true }
 mc-unpack = { git = "https://github.com/patodois/mc-unpack", rev = "003c9e9a2e95f45c087994225f254de22ef87406", features = ["bridge"], optional = true }
-libc = "0.2"
 
 [dependencies.bevy]
 version = "0.20"
