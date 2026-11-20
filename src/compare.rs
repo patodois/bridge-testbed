@@ -114,10 +114,39 @@ pub fn diff(a: &Rgba, b: &Rgba, tolerance: u8) -> (Diff, Rgba) {
     )
 }
 
+/// Whether `name` is one file name inside a folder on this system: joined to the folder, it can
+/// neither leave it (`..`, a separator, an absolute path, a Windows drive) nor reach a subfolder
+fn names_a_file_here(name: &str) -> bool {
+    Path::new(name).file_name() == Some(std::ffi::OsStr::new(name))
+}
+
+/// Reads a shot folder's manifest. Its labels name the diff images written under `--diff-out` and its
+/// `png` fields the images read, and the folder may come from someone else: each must be a file name
+/// in the folder, nothing that reaches outside it.
 fn read_manifest(dir: &Path) -> Result<Manifest> {
     let p = dir.join("manifest.json");
     let text = std::fs::read_to_string(&p).with_context(|| format!("reading {}", p.display()))?;
-    serde_json::from_str(&text).with_context(|| format!("parsing {}", p.display()))
+    let manifest: Manifest =
+        serde_json::from_str(&text).with_context(|| format!("parsing {}", p.display()))?;
+    for e in &manifest.items {
+        if !names_a_file_here(&format!("{}.png", e.label)) || e.label.is_empty() {
+            bail!(
+                "{}: the label {:?} is not a plain file name",
+                p.display(),
+                e.label
+            );
+        }
+        if let Some(png) = &e.png {
+            if !names_a_file_here(png) {
+                bail!(
+                    "{}: the png {png:?} of {:?} is not a file in the folder",
+                    p.display(),
+                    e.label
+                );
+            }
+        }
+    }
+    Ok(manifest)
 }
 
 /// What differs in the numbers of two entries
@@ -324,6 +353,43 @@ mod tests {
             ..a.clone()
         };
         assert!(geometry_changes(&a, &b).is_empty());
+    }
+
+    #[test]
+    fn a_manifest_whose_names_leave_the_folder_is_refused() {
+        let dir = std::env::temp_dir().join(format!("bt-manifest-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let write = |label: &str, png: Option<&str>| {
+            let m = Manifest {
+                items: vec![Entry {
+                    label: label.into(),
+                    png: png.map(str::to_string),
+                    ..Entry::default()
+                }],
+                ..Manifest::default()
+            };
+            std::fs::write(
+                dir.join("manifest.json"),
+                serde_json::to_string(&m).unwrap(),
+            )
+            .unwrap();
+            read_manifest(&dir)
+        };
+        assert!(write("Sherman", Some("Sherman.png")).is_ok());
+        // A label from before the stricter config rules still reads on this system
+        assert!(write("Tank 2", Some("Tank 2.png")).is_ok());
+        for (label, png) in [
+            ("../../x", Some("x.png")),
+            ("ok", Some("..")),
+            ("a/b", None),
+            ("ok", Some("/etc/x.png")),
+            ("ok", Some("../ok.png")),
+            ("ok", Some("sub/ok.png")),
+            ("", None),
+        ] {
+            assert!(write(label, png).is_err(), "{label:?} {png:?} was accepted");
+        }
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]
