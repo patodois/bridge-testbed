@@ -5,5 +5,6 @@
 /shots/
 /captures/
 *.png
-/diff/
+# compare's diff images, at any depth (NEW/diff/)
+diff/
 /dist
