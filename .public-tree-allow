@@ -1,0 +1,2 @@
+# Exceptions to the public-tree gate. Each one needs a reason after '#'; `blob=` pins the entry to exact files.
+docs/title.png blob=3691534 # our own lettered title image for the README (drawn for this project, no game art)

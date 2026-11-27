@@ -1,4 +1,4 @@
-# bridge-testbed
+<h1 align="center"><img src="docs/title.png" alt="bridge-testbed" width="439"></h1>
 
 [![rewrite-bridge on crates.io](https://img.shields.io/crates/v/rewrite-bridge.svg?label=rewrite-bridge)](https://crates.io/crates/rewrite-bridge)
 [![rewrite-bridge-bevy on crates.io](https://img.shields.io/crates/v/rewrite-bridge-bevy.svg?label=rewrite-bridge-bevy)](https://crates.io/crates/rewrite-bridge-bevy)

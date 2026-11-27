@@ -8,3 +8,6 @@
 # compare's diff images, at any depth (NEW/diff/)
 diff/
 /dist
+
+# the README title image is ours and is tracked
+!docs/title.png
